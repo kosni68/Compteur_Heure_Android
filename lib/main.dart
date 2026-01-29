@@ -380,14 +380,22 @@ class _PointagePageState extends State<PointagePage>
   TimeOfDay? _endTime;
   List<BreakInterval> _breaks = <BreakInterval>[];
 
+  DateTime? _estimatedEndDateTime;
+  Duration? _remaining;
+  Duration? _targetWorkDuration;
+  Duration? _estimatedBreakDuration;
+  int _estimateDayOffset = 0;
+
   DateTime? _endDateTime;
   Duration? _presenceDuration;
   Duration? _workedDuration;
   Duration? _totalBreakDuration;
-  int _dayOffset = 0;
-  String? _errorMessage;
+  int _actualDayOffset = 0;
+  String? _estimateErrorMessage;
+  String? _pointageErrorMessage;
 
   late final AnimationController _introController;
+  Timer? _ticker;
   bool _syncing = false;
   bool _savingEntry = false;
 
@@ -399,12 +407,16 @@ class _PointagePageState extends State<PointagePage>
       duration: const Duration(milliseconds: 700),
     )..forward();
     widget.controller.addListener(_onControllerChanged);
+    _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
+      _updateCountdown();
+    });
     _syncFromController();
   }
 
   @override
   void dispose() {
     widget.controller.removeListener(_onControllerChanged);
+    _ticker?.cancel();
     _introController.dispose();
     super.dispose();
   }
@@ -442,69 +454,132 @@ class _PointagePageState extends State<PointagePage>
     unawaited(widget.controller.update(updated));
   }
 
-  void _clearResults([String? message]) {
-    setState(() {
-      _errorMessage = message;
-      _endDateTime = null;
-      _presenceDuration = null;
-      _workedDuration = null;
-      _totalBreakDuration = null;
-      _dayOffset = 0;
-    });
-  }
-
   void _recalculate() {
+    final targetMinutes = widget.controller.data.targetMinutes;
+    final targetDuration = Duration(minutes: targetMinutes);
+
+    DateTime? estimatedEnd;
+    Duration? remaining;
+    Duration? estimatedBreak;
+    int estimateOffset = 0;
+    String? estimateError;
+
+    DateTime? actualEnd;
+    Duration? presence;
+    Duration? worked;
+    Duration? actualBreak;
+    int actualOffset = 0;
+    String? pointageError;
+    DateTime? startBaseDate;
+
     if (_startTime == null) {
-      _clearResults("Renseigne l'heure de debut.");
-      return;
-    }
-    if (_endTime == null) {
-      _clearResults("Renseigne l'heure de fin.");
-      return;
-    }
+      estimateError = "Renseigne l'heure de debut.";
+      pointageError = "Renseigne l'heure de debut.";
+    } else {
+      final now = DateTime.now();
+      final baseDate = DateTime(now.year, now.month, now.day);
+      startBaseDate = baseDate;
+      final start = _dateTimeFromTimeOfDay(baseDate, _startTime!);
 
-    final now = DateTime.now();
-    final baseDate = DateTime(now.year, now.month, now.day);
-    final start = _dateTimeFromTimeOfDay(baseDate, _startTime!);
-    DateTime end = _dateTimeFromTimeOfDay(baseDate, _endTime!);
-    if (end.isBefore(start)) {
-      end = end.add(const Duration(days: 1));
-    }
+      final breakIntervals = _normalizeBreaks(baseDate, start, _breaks);
 
-    final breakIntervals = _normalizeBreaks(baseDate, start, _breaks);
-    Duration totalBreak = Duration.zero;
+      if (targetMinutes > 0) {
+        DateTime estimated = start.add(Duration(minutes: targetMinutes));
+        Duration totalEstimatedBreak = Duration.zero;
+        for (final interval in breakIntervals) {
+          if (interval.start.isBefore(estimated)) {
+            final duration = interval.end.difference(interval.start);
+            totalEstimatedBreak += duration;
+            estimated = estimated.add(duration);
+          }
+        }
+        estimatedEnd = estimated;
+        estimatedBreak = totalEstimatedBreak;
+        estimateOffset = estimated
+            .difference(DateTime(start.year, start.month, start.day))
+            .inDays;
+        remaining = estimated.difference(DateTime.now());
+      }
 
-    for (final interval in breakIntervals) {
-      if (interval.start.isBefore(end)) {
-        final effectiveEnd = interval.end.isAfter(end) ? end : interval.end;
-        if (effectiveEnd.isAfter(interval.start)) {
-          totalBreak += effectiveEnd.difference(interval.start);
+      if (_endTime != null) {
+        DateTime end = _dateTimeFromTimeOfDay(baseDate, _endTime!);
+        if (end.isBefore(start)) {
+          end = end.add(const Duration(days: 1));
+        }
+        actualEnd = end;
+        actualOffset = end
+            .difference(DateTime(start.year, start.month, start.day))
+            .inDays;
+
+        Duration totalBreak = Duration.zero;
+        for (final interval in breakIntervals) {
+          if (interval.start.isBefore(end)) {
+            final effectiveEnd = interval.end.isAfter(end) ? end : interval.end;
+            if (effectiveEnd.isAfter(interval.start)) {
+              totalBreak += effectiveEnd.difference(interval.start);
+            }
+          }
+        }
+
+        presence = end.difference(start);
+        worked = presence - totalBreak;
+        if (worked.inMinutes <= 0) {
+          pointageError = 'Horaires invalides.';
+          actualEnd = null;
+          presence = null;
+          worked = null;
+          actualBreak = null;
+          actualOffset = 0;
+        } else {
+          actualBreak = totalBreak;
         }
       }
     }
 
-    final presence = end.difference(start);
-    final worked = presence - totalBreak;
-    if (worked.inMinutes <= 0) {
-      _clearResults('Horaires invalides.');
+    setState(() {
+      _targetWorkDuration = targetDuration;
+      _estimatedEndDateTime = estimatedEnd;
+      _estimatedBreakDuration = estimatedBreak;
+      _estimateDayOffset = estimateOffset;
+      _remaining = remaining;
+      _estimateErrorMessage = estimateError;
+
+      _endDateTime = actualEnd;
+      _presenceDuration = presence;
+      _workedDuration = worked;
+      _totalBreakDuration = actualBreak;
+      _actualDayOffset = actualOffset;
+      _pointageErrorMessage = pointageError;
+    });
+
+    if (worked != null && startBaseDate != null) {
+      _maybeSaveEntryForDate(worked, startBaseDate);
+    }
+  }
+
+  void _updateCountdown() {
+    if (!mounted) {
+      return;
+    }
+    final finish = _estimatedEndDateTime;
+    if (finish == null) {
+      if (_remaining != null) {
+        setState(() {
+          _remaining = null;
+        });
+      }
       return;
     }
 
-    setState(() {
-      _errorMessage = null;
-      _endDateTime = end;
-      _presenceDuration = presence;
-      _workedDuration = worked;
-      _totalBreakDuration = totalBreak;
-      _dayOffset = end
-          .difference(DateTime(start.year, start.month, start.day))
-          .inDays;
-    });
-
-    _maybeSaveTodayEntry(worked);
+    final remaining = finish.difference(DateTime.now());
+    if (_remaining == null || remaining.inSeconds != _remaining!.inSeconds) {
+      setState(() {
+        _remaining = remaining;
+      });
+    }
   }
 
-  void _maybeSaveTodayEntry(Duration worked) {
+  void _maybeSaveEntryForDate(Duration worked, DateTime startDate) {
     if (_savingEntry) {
       return;
     }
@@ -513,15 +588,18 @@ class _PointagePageState extends State<PointagePage>
       return;
     }
 
-    final key = dateKey(dateOnly(DateTime.now()));
+    final key = dateKey(dateOnly(startDate));
     final data = widget.controller.data;
-    if (data.entries[key] == minutes) {
+    final existing = data.entries[key];
+    if (existing != null &&
+        existing.minutes == minutes &&
+        existing.type == DayType.work) {
       return;
     }
 
     _savingEntry = true;
-    final updatedEntries = Map<String, int>.from(data.entries);
-    updatedEntries[key] = minutes;
+    final updatedEntries = Map<String, DayEntry>.from(data.entries);
+    updatedEntries[key] = DayEntry(minutes: minutes, type: DayType.work);
     unawaited(
       widget.controller
           .update(data.copyWith(entries: updatedEntries))
@@ -817,40 +895,41 @@ class _PointagePageState extends State<PointagePage>
   }
 
   Widget _resultCard(ThemeData theme) {
+    final estimatedEnd = _estimatedEndDateTime;
+    final estimateDayLabel =
+        _estimateDayOffset > 0 ? 'J+$_estimateDayOffset' : null;
+    final target = _targetWorkDuration;
+    final estimatedBreaks = _estimatedBreakDuration;
+    final remaining = _remaining;
+
     final end = _endDateTime;
     final worked = _workedDuration;
     final presence = _presenceDuration;
     final breaks = _totalBreakDuration;
+    final actualDayLabel =
+        _actualDayOffset > 0 ? 'J+$_actualDayOffset' : null;
 
-    if (end == null || worked == null || presence == null || breaks == null) {
-      return SectionCard(
-        title: 'Resultat',
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (_errorMessage != null) ...[
-              Text(
-                _errorMessage!,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.error,
-                ),
-              ),
-              const SizedBox(height: 8),
-            ],
-            Text(
-              "Renseigne l'heure de debut et l'heure de fin pour calculer la journee.",
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurface.withOpacity(0.6),
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    final dayLabel = _dayOffset > 0 ? 'J+$_dayOffset' : null;
+    final targetMinutes = widget.controller.data.targetMinutes;
+    final balanceMinutes =
+        worked == null ? null : worked.inMinutes - targetMinutes;
     final key = dateKey(dateOnly(DateTime.now()));
-    final saved = widget.controller.data.entries[key] == worked.inMinutes;
+    final saved = worked == null
+        ? false
+        : (widget.controller.data.entries[key]?.minutes == worked.inMinutes &&
+            widget.controller.data.entries[key]?.type == DayType.work);
+
+    final hasPointage =
+        end != null && worked != null && presence != null && breaks != null;
+    late final DateTime endValue;
+    late final Duration workedValue;
+    late final Duration presenceValue;
+    late final Duration breaksValue;
+    if (hasPointage) {
+      endValue = end!;
+      workedValue = worked!;
+      presenceValue = presence!;
+      breaksValue = breaks!;
+    }
 
     return SectionCard(
       title: 'Resultat',
@@ -858,58 +937,186 @@ class _PointagePageState extends State<PointagePage>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Heure de fin',
+            'Estimation',
             style: theme.textTheme.labelLarge?.copyWith(
               color: theme.colorScheme.onSurface.withOpacity(0.6),
             ),
           ),
           const SizedBox(height: 6),
-          Row(
-            children: [
+          if (estimatedEnd == null) ...[
+            if (_estimateErrorMessage != null) ...[
               Text(
-                formatTime(end),
-                style: theme.textTheme.displaySmall?.copyWith(
-                  fontWeight: FontWeight.w600,
+                _estimateErrorMessage!,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.error,
                 ),
               ),
-              if (dayLabel != null) ...[
-                const SizedBox(width: 12),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.primary.withOpacity(0.12),
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                  child: Text(
-                    dayLabel,
-                    style: theme.textTheme.labelMedium?.copyWith(
-                      color: theme.colorScheme.primary,
-                    ),
+              const SizedBox(height: 6),
+            ],
+            Text(
+              "Renseigne l'heure de debut pour estimer la fin.",
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurface.withOpacity(0.6),
+              ),
+            ),
+          ] else ...[
+            Text(
+              'Heure de fin estimee',
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: theme.colorScheme.onSurface.withOpacity(0.6),
+              ),
+            ),
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                Text(
+                  formatTime(estimatedEnd),
+                  style: theme.textTheme.displaySmall?.copyWith(
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
+                if (estimateDayLabel != null) ...[
+                  const SizedBox(width: 12),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.primary.withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      estimateDayLabel,
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        color: theme.colorScheme.primary,
+                      ),
+                    ),
+                  ),
+                ],
               ],
-            ],
+            ),
+            const SizedBox(height: 14),
+            if (target != null)
+              InfoRow(
+                label: 'Objectif',
+                value: Text(formatDuration(target)),
+              ),
+            if (estimatedBreaks != null)
+              InfoRow(
+                label: 'Pauses prevues',
+                value: Text(formatDuration(estimatedBreaks)),
+              ),
+            InfoRow(
+              label: 'Compteur',
+              value: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 250),
+                child: Text(
+                  formatRemaining(remaining),
+                  key: ValueKey(remaining?.inSeconds ?? 0),
+                  style: theme.textTheme.bodyLarge?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+          ],
+          const SizedBox(height: 16),
+          Text(
+            'Pointage',
+            style: theme.textTheme.labelLarge?.copyWith(
+              color: theme.colorScheme.onSurface.withOpacity(0.6),
+            ),
           ),
-          const SizedBox(height: 14),
-          InfoRow(
-            label: 'Duree travail',
-            value: Text(formatDuration(worked)),
-          ),
-          InfoRow(
-            label: 'Pauses',
-            value: Text(formatDuration(breaks)),
-          ),
-          InfoRow(
-            label: 'Presence',
-            value: Text(formatDuration(presence)),
-          ),
-          InfoRow(
-            label: 'Calendrier',
-            value: Text(saved ? 'Enregistre' : 'Non'),
-          ),
+          const SizedBox(height: 6),
+          if (_pointageErrorMessage != null) ...[
+            Text(
+              _pointageErrorMessage!,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.error,
+              ),
+            ),
+            const SizedBox(height: 6),
+          ],
+          if (_pointageErrorMessage == null &&
+              (end == null ||
+                  worked == null ||
+                  presence == null ||
+                  breaks == null))
+            Text(
+              "Renseigne l'heure de fin pour calculer le solde.",
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurface.withOpacity(0.6),
+              ),
+            )
+          else if (hasPointage) ...[
+            Text(
+              'Heure de fin pointee',
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: theme.colorScheme.onSurface.withOpacity(0.6),
+              ),
+            ),
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                Text(
+                  formatTime(endValue),
+                  style: theme.textTheme.displaySmall?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                if (actualDayLabel != null) ...[
+                  const SizedBox(width: 12),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.primary.withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      actualDayLabel,
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        color: theme.colorScheme.primary,
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+            const SizedBox(height: 14),
+            InfoRow(
+              label: 'Duree travail',
+              value: Text(formatDuration(workedValue)),
+            ),
+            InfoRow(
+              label: 'Pauses',
+              value: Text(formatDuration(breaksValue)),
+            ),
+            InfoRow(
+              label: 'Presence',
+              value: Text(formatDuration(presenceValue)),
+            ),
+            if (balanceMinutes != null)
+              InfoRow(
+                label: 'Solde vs objectif',
+                value: Text(
+                  formatSignedDuration(balanceMinutes),
+                  style: TextStyle(
+                    color: balanceMinutes >= 0
+                        ? Colors.green
+                        : theme.colorScheme.error,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            InfoRow(
+              label: 'Calendrier',
+              value: Text(saved ? 'Enregistre' : 'Non'),
+            ),
+          ],
         ],
       ),
     );
@@ -1169,6 +1376,7 @@ class _CalendarPageState extends State<CalendarPage> {
   late DateTime _selectedDay;
   CalendarFormat _format = CalendarFormat.month;
   final TextEditingController _hoursController = TextEditingController();
+  DayType _selectedType = DayType.work;
   String? _errorMessage;
 
   @override
@@ -1196,10 +1404,17 @@ class _CalendarPageState extends State<CalendarPage> {
   }
 
   void _syncForSelectedDay() {
-    final minutes = widget.controller.data.entries[dateKey(_selectedDay)];
-    final next = minutes == null ? '' : formatDecimalHoursFromMinutes(minutes);
+    final entry = widget.controller.data.entries[dateKey(_selectedDay)];
+    final next =
+        entry == null ? '' : formatDecimalHoursFromMinutes(entry.minutes);
     if (_hoursController.text != next) {
       _hoursController.text = next;
+    }
+    final nextType = entry?.type ?? DayType.work;
+    if (_selectedType != nextType) {
+      setState(() {
+        _selectedType = nextType;
+      });
     }
     if (_errorMessage != null) {
       setState(() {
@@ -1229,8 +1444,19 @@ class _CalendarPageState extends State<CalendarPage> {
   }
 
   void _saveEntry() {
-    final minutes =
-        parseDecimalHoursToMinutes(_hoursController.text, allowZero: true);
+    final raw = _hoursController.text.trim();
+    int? minutes;
+    if (raw.isEmpty) {
+      if (_selectedType == DayType.work) {
+        setState(() {
+          _errorMessage = 'Valeur invalide. Exemple: 7,5';
+        });
+        return;
+      }
+      minutes = 0;
+    } else {
+      minutes = parseDecimalHoursToMinutes(raw, allowZero: true);
+    }
     if (minutes == null) {
       setState(() {
         _errorMessage = 'Valeur invalide. Exemple: 7,5';
@@ -1238,8 +1464,11 @@ class _CalendarPageState extends State<CalendarPage> {
       return;
     }
     final data = widget.controller.data;
-    final updatedEntries = Map<String, int>.from(data.entries);
-    updatedEntries[dateKey(_selectedDay)] = minutes;
+    final updatedEntries = Map<String, DayEntry>.from(data.entries);
+    updatedEntries[dateKey(_selectedDay)] = DayEntry(
+      minutes: minutes,
+      type: _selectedType,
+    );
     unawaited(
       widget.controller.update(data.copyWith(entries: updatedEntries)),
     );
@@ -1247,7 +1476,7 @@ class _CalendarPageState extends State<CalendarPage> {
 
   void _clearEntry() {
     final data = widget.controller.data;
-    final updatedEntries = Map<String, int>.from(data.entries);
+    final updatedEntries = Map<String, DayEntry>.from(data.entries);
     updatedEntries.remove(dateKey(_selectedDay));
     unawaited(
       widget.controller.update(data.copyWith(entries: updatedEntries)),
@@ -1264,10 +1493,18 @@ class _CalendarPageState extends State<CalendarPage> {
     final periodRange = _format == CalendarFormat.week
         ? _weekRange(_focusedDay)
         : _monthRange(_focusedDay);
-    final periodMinutes =
-        sumEntriesInRange(entries, periodRange.start, periodRange.end);
-    final periodDays =
-        countEntriesInRange(entries, periodRange.start, periodRange.end);
+    final periodMinutes = sumEntriesInRange(
+      entries,
+      periodRange.start,
+      periodRange.end,
+      typeFilter: DayType.work,
+    );
+    final periodDays = countEntriesInRange(
+      entries,
+      periodRange.start,
+      periodRange.end,
+      typeFilter: DayType.work,
+    );
     final periodTarget = data.targetMinutes * periodDays;
     final periodBalance = periodMinutes - periodTarget;
 
@@ -1305,7 +1542,7 @@ class _CalendarPageState extends State<CalendarPage> {
                 ),
               ),
               const SizedBox(height: 12),
-              TableCalendar<int>(
+              TableCalendar<DayEntry>(
                 locale: 'fr_FR',
                 focusedDay: _focusedDay,
                 firstDay: DateTime(2020),
@@ -1320,11 +1557,11 @@ class _CalendarPageState extends State<CalendarPage> {
                   });
                 },
                 eventLoader: (day) {
-                  final minutes = entries[dateKey(day)];
-                  if (minutes == null || minutes == 0) {
-                    return const [];
+                  final entry = entries[dateKey(day)];
+                  if (entry == null) {
+                    return const <DayEntry>[];
                   }
-                  return [minutes];
+                  return <DayEntry>[entry];
                 },
                 enabledDayPredicate: (day) => !_isFuture(day),
                 headerStyle: const HeaderStyle(
@@ -1340,10 +1577,27 @@ class _CalendarPageState extends State<CalendarPage> {
                     color: theme.colorScheme.primary,
                     shape: BoxShape.circle,
                   ),
-                  markerDecoration: BoxDecoration(
-                    color: theme.colorScheme.secondary,
-                    shape: BoxShape.circle,
-                  ),
+                ),
+                calendarBuilders: CalendarBuilders(
+                  markerBuilder: (context, day, events) {
+                    if (events.isEmpty) {
+                      return null;
+                    }
+                    final entry = events.first;
+                    final color = colorForDayType(entry.type, theme);
+                    return Align(
+                      alignment: Alignment.bottomCenter,
+                      child: Container(
+                        width: 6,
+                        height: 6,
+                        margin: const EdgeInsets.only(bottom: 4),
+                        decoration: BoxDecoration(
+                          color: color,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    );
+                  },
                 ),
               ),
               const SizedBox(height: 12),
@@ -1394,6 +1648,25 @@ class _CalendarPageState extends State<CalendarPage> {
                 ),
               ),
               const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: DayType.values.map((type) {
+                  return ChoiceChip(
+                    label: Text(dayTypeLabel(type)),
+                    selected: _selectedType == type,
+                    onSelected: isFuture
+                        ? null
+                        : (_) {
+                            setState(() {
+                              _selectedType = type;
+                              _errorMessage = null;
+                            });
+                          },
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 10),
               TextField(
                 controller: _hoursController,
                 enabled: !isFuture,
@@ -1468,8 +1741,11 @@ class StatsPage extends StatelessWidget {
     final data = controller.data;
     final entries = data.entries;
 
-    final totalMinutes = entries.values.fold<int>(0, (sum, value) => sum + value);
-    final trackedDays = entries.length;
+    final workEntries = entries.values.where((entry) => isWorkDayType(entry.type));
+    final totalMinutes =
+        workEntries.fold<int>(0, (sum, entry) => sum + entry.minutes);
+    final trackedDays =
+        entries.values.where((entry) => isWorkDayType(entry.type)).length;
     final targetTotal = data.targetMinutes * trackedDays;
     final balanceMinutes = totalMinutes - targetTotal;
 
@@ -1480,6 +1756,15 @@ class StatsPage extends StatelessWidget {
     final bestEntry = _bestEntry(entries);
     final bestDate = bestEntry == null ? null : dateFromKey(bestEntry.key);
 
+    final congeCount =
+        entries.values.where((entry) => entry.type == DayType.conge).length;
+    final maladieCount =
+        entries.values.where((entry) => entry.type == DayType.maladie).length;
+    final pontCount =
+        entries.values.where((entry) => entry.type == DayType.pont).length;
+    final recupCount =
+        entries.values.where((entry) => entry.type == DayType.recup).length;
+
     final today = dateOnly(DateTime.now());
     final weekStart = startOfWeek(today);
     final weekEnd = weekStart.add(const Duration(days: 6));
@@ -1487,9 +1772,24 @@ class StatsPage extends StatelessWidget {
     final monthEnd = DateTime(today.year, today.month + 1, 0);
     final last7Start = today.subtract(const Duration(days: 6));
 
-    final weekMinutes = sumEntriesInRange(entries, weekStart, weekEnd);
-    final monthMinutes = sumEntriesInRange(entries, monthStart, monthEnd);
-    final last7Minutes = sumEntriesInRange(entries, last7Start, today);
+    final weekMinutes = sumEntriesInRange(
+      entries,
+      weekStart,
+      weekEnd,
+      typeFilter: DayType.work,
+    );
+    final monthMinutes = sumEntriesInRange(
+      entries,
+      monthStart,
+      monthEnd,
+      typeFilter: DayType.work,
+    );
+    final last7Minutes = sumEntriesInRange(
+      entries,
+      last7Start,
+      today,
+      typeFilter: DayType.work,
+    );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1545,7 +1845,7 @@ class StatsPage extends StatelessWidget {
                 value: Text(
                   bestEntry == null || bestDate == null
                       ? '--'
-                      : '${formatDateShort(bestDate)} · ${formatDuration(Duration(minutes: bestEntry.value))}',
+                      : '${formatDateShort(bestDate)} · ${formatDuration(Duration(minutes: bestEntry.value.minutes))}',
                 ),
               ),
               InfoRow(
@@ -1569,16 +1869,47 @@ class StatsPage extends StatelessWidget {
             ],
           ),
         ),
+        if (congeCount + maladieCount + pontCount + recupCount > 0) ...[
+          const SizedBox(height: 16),
+          SectionCard(
+            title: 'Jours speciaux',
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                InfoRow(
+                  label: 'Conge',
+                  value: Text('$congeCount'),
+                ),
+                InfoRow(
+                  label: 'Maladie',
+                  value: Text('$maladieCount'),
+                ),
+                InfoRow(
+                  label: 'Pont',
+                  value: Text('$pontCount'),
+                ),
+                InfoRow(
+                  label: 'Recup',
+                  value: Text('$recupCount'),
+                ),
+              ],
+            ),
+          ),
+        ],
       ],
     );
   }
 
-  MapEntry<String, int>? _bestEntry(Map<String, int> entries) {
-    if (entries.isEmpty) {
+  MapEntry<String, DayEntry>? _bestEntry(Map<String, DayEntry> entries) {
+    final workEntries = entries.entries
+        .where((entry) => isWorkDayType(entry.value.type))
+        .toList();
+    if (workEntries.isEmpty) {
       return null;
     }
-    return entries.entries.reduce(
-      (current, next) => next.value > current.value ? next : current,
+    return workEntries.reduce(
+      (current, next) =>
+          next.value.minutes > current.value.minutes ? next : current,
     );
   }
 }
@@ -1799,7 +2130,7 @@ class AppStorage {
         targetMinutes: targetMinutes,
         startTime: timeFromStorage(startRaw),
         breaks: breaksFromStorage(breaksRaw),
-        entries: <String, int>{},
+        entries: <String, DayEntry>{},
         themeMode: ThemeMode.light,
         seedColor: AppData.defaultSeedColor,
       );
@@ -1813,6 +2144,131 @@ class AppStorage {
     final encoder = const JsonEncoder.withIndent('  ');
     await file.writeAsString(encoder.convert(data.toJson()));
   }
+}
+
+enum DayType {
+  work,
+  conge,
+  maladie,
+  pont,
+  recup,
+}
+
+DayType dayTypeFromString(String? raw) {
+  switch (raw) {
+    case 'conge':
+      return DayType.conge;
+    case 'maladie':
+      return DayType.maladie;
+    case 'pont':
+      return DayType.pont;
+    case 'recup':
+      return DayType.recup;
+    case 'work':
+    default:
+      return DayType.work;
+  }
+}
+
+String dayTypeToString(DayType type) {
+  switch (type) {
+    case DayType.conge:
+      return 'conge';
+    case DayType.maladie:
+      return 'maladie';
+    case DayType.pont:
+      return 'pont';
+    case DayType.recup:
+      return 'recup';
+    case DayType.work:
+    default:
+      return 'work';
+  }
+}
+
+String dayTypeLabel(DayType type) {
+  switch (type) {
+    case DayType.conge:
+      return 'Conge';
+    case DayType.maladie:
+      return 'Maladie';
+    case DayType.pont:
+      return 'Pont';
+    case DayType.recup:
+      return 'Recup';
+    case DayType.work:
+    default:
+      return 'Travail';
+  }
+}
+
+bool isWorkDayType(DayType type) => type == DayType.work;
+
+Color colorForDayType(DayType type, ThemeData theme) {
+  switch (type) {
+    case DayType.conge:
+      return Colors.orange;
+    case DayType.maladie:
+      return Colors.redAccent;
+    case DayType.pont:
+      return Colors.indigo;
+    case DayType.recup:
+      return Colors.green;
+    case DayType.work:
+    default:
+      return theme.colorScheme.primary;
+  }
+}
+
+class DayEntry {
+  const DayEntry({required this.minutes, required this.type});
+
+  final int minutes;
+  final DayType type;
+
+  DayEntry copyWith({int? minutes, DayType? type}) {
+    return DayEntry(
+      minutes: minutes ?? this.minutes,
+      type: type ?? this.type,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'minutes': minutes,
+      'type': dayTypeToString(type),
+    };
+  }
+}
+
+DayEntry? dayEntryFromJson(dynamic raw) {
+  if (raw is int) {
+    return DayEntry(minutes: raw, type: DayType.work);
+  }
+  if (raw is double) {
+    return DayEntry(minutes: raw.round(), type: DayType.work);
+  }
+  if (raw is String) {
+    final minutes = int.tryParse(raw);
+    if (minutes != null) {
+      return DayEntry(minutes: minutes, type: DayType.work);
+    }
+  }
+  if (raw is Map) {
+    final rawMinutes = raw['minutes'];
+    int? minutes;
+    if (rawMinutes is int) {
+      minutes = rawMinutes;
+    } else if (rawMinutes is double) {
+      minutes = rawMinutes.round();
+    } else if (rawMinutes is String) {
+      minutes = int.tryParse(rawMinutes);
+    }
+    minutes ??= 0;
+    final type = dayTypeFromString(raw['type'] as String?);
+    return DayEntry(minutes: minutes, type: type);
+  }
+  return null;
 }
 
 const Object _unset = Object();
@@ -1834,7 +2290,7 @@ class AppData {
   final int targetMinutes;
   final TimeOfDay? startTime;
   final List<BreakInterval> breaks;
-  final Map<String, int> entries;
+  final Map<String, DayEntry> entries;
   final ThemeMode themeMode;
   final int seedColor;
 
@@ -1843,7 +2299,7 @@ class AppData {
       targetMinutes: defaultTargetMinutes,
       startTime: null,
       breaks: const <BreakInterval>[],
-      entries: <String, int>{},
+      entries: <String, DayEntry>{},
       themeMode: ThemeMode.light,
       seedColor: defaultSeedColor,
     );
@@ -1853,7 +2309,7 @@ class AppData {
     int? targetMinutes,
     Object? startTime = _unset,
     List<BreakInterval>? breaks,
-    Map<String, int>? entries,
+    Map<String, DayEntry>? entries,
     ThemeMode? themeMode,
     int? seedColor,
   }) {
@@ -1861,7 +2317,7 @@ class AppData {
       targetMinutes: targetMinutes ?? this.targetMinutes,
       startTime: startTime == _unset ? this.startTime : startTime as TimeOfDay?,
       breaks: breaks ?? cloneBreaks(this.breaks),
-      entries: entries ?? Map<String, int>.from(this.entries),
+      entries: entries ?? Map<String, DayEntry>.from(this.entries),
       themeMode: themeMode ?? this.themeMode,
       seedColor: seedColor ?? this.seedColor,
     );
@@ -1890,22 +2346,15 @@ class AppData {
     final breaks = breaksFromJson(rawBreaks);
 
     final rawEntries = json['entries'];
-    final entries = <String, int>{};
+    final entries = <String, DayEntry>{};
     if (rawEntries is Map) {
       rawEntries.forEach((key, value) {
         if (key is! String) {
           return;
         }
-        int? minutes;
-        if (value is int) {
-          minutes = value;
-        } else if (value is double) {
-          minutes = value.round();
-        } else if (value is String) {
-          minutes = int.tryParse(value);
-        }
-        if (minutes != null) {
-          entries[key] = minutes;
+        final entry = dayEntryFromJson(value);
+        if (entry != null) {
+          entries[key] = entry;
         }
       });
     }
@@ -1936,7 +2385,9 @@ class AppData {
             },
           )
           .toList(),
-      'entries': entries,
+      'entries': entries.map(
+        (key, value) => MapEntry<String, dynamic>(key, value.toJson()),
+      ),
       'themeMode': themeModeToString(themeMode),
       'seedColor': seedColor,
     };
@@ -2203,10 +2654,11 @@ DateTime startOfWeek(DateTime date) {
 }
 
 int sumEntriesInRange(
-  Map<String, int> entries,
+  Map<String, DayEntry> entries,
   DateTime start,
-  DateTime end,
-) {
+  DateTime end, {
+  DayType? typeFilter,
+}) {
   final rangeStart = dateOnly(start);
   final rangeEnd = dateOnly(end);
   int total = 0;
@@ -2216,17 +2668,21 @@ int sumEntriesInRange(
       continue;
     }
     if (!date.isBefore(rangeStart) && !date.isAfter(rangeEnd)) {
-      total += entry.value;
+      if (typeFilter != null && entry.value.type != typeFilter) {
+        continue;
+      }
+      total += entry.value.minutes;
     }
   }
   return total;
 }
 
 int countEntriesInRange(
-  Map<String, int> entries,
+  Map<String, DayEntry> entries,
   DateTime start,
-  DateTime end,
-) {
+  DateTime end, {
+  DayType? typeFilter,
+}) {
   final rangeStart = dateOnly(start);
   final rangeEnd = dateOnly(end);
   int count = 0;
@@ -2236,6 +2692,9 @@ int countEntriesInRange(
       continue;
     }
     if (!date.isBefore(rangeStart) && !date.isAfter(rangeEnd)) {
+      if (typeFilter != null && entry.value.type != typeFilter) {
+        continue;
+      }
       count++;
     }
   }
