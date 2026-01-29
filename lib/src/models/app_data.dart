@@ -16,6 +16,7 @@ class AppData {
     required this.breaks,
     required this.entries,
     required this.localeCode,
+    required this.backgroundId,
     required this.themeMode,
     required this.seedColor,
   });
@@ -29,6 +30,7 @@ class AppData {
   final List<BreakInterval> breaks;
   final Map<String, DayEntry> entries;
   final String localeCode;
+  final String backgroundId;
   final ThemeMode themeMode;
   final int seedColor;
 
@@ -39,6 +41,7 @@ class AppData {
       breaks: const <BreakInterval>[],
       entries: <String, DayEntry>{},
       localeCode: 'fr',
+      backgroundId: 'none',
       themeMode: ThemeMode.light,
       seedColor: defaultSeedColor,
     );
@@ -50,6 +53,7 @@ class AppData {
     List<BreakInterval>? breaks,
     Map<String, DayEntry>? entries,
     String? localeCode,
+    String? backgroundId,
     ThemeMode? themeMode,
     int? seedColor,
   }) {
@@ -59,6 +63,7 @@ class AppData {
       breaks: breaks ?? cloneBreaks(this.breaks),
       entries: entries ?? Map<String, DayEntry>.from(this.entries),
       localeCode: localeCode ?? this.localeCode,
+      backgroundId: backgroundId ?? this.backgroundId,
       themeMode: themeMode ?? this.themeMode,
       seedColor: seedColor ?? this.seedColor,
     );
@@ -101,6 +106,7 @@ class AppData {
     }
 
     final localeCode = (json['localeCode'] as String?) ?? 'fr';
+    final backgroundId = (json['backgroundId'] as String?) ?? 'none';
     final themeMode = themeModeFromString(json['themeMode'] as String?);
     final rawSeed = json['seedColor'];
     final seedColor = rawSeed is int ? rawSeed : defaultSeedColor;
@@ -111,6 +117,7 @@ class AppData {
       breaks: breaks,
       entries: entries,
       localeCode: localeCode,
+      backgroundId: backgroundId,
       themeMode: themeMode,
       seedColor: seedColor,
     );
@@ -132,6 +139,7 @@ class AppData {
         (key, value) => MapEntry<String, dynamic>(key, value.toJson()),
       ),
       'localeCode': localeCode,
+      'backgroundId': backgroundId,
       'themeMode': themeModeToString(themeMode),
       'seedColor': seedColor,
     };

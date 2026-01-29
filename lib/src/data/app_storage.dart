@@ -53,6 +53,7 @@ class AppStorage {
         breaks: breaksFromStorage(breaksRaw),
         entries: <String, DayEntry>{},
         localeCode: 'fr',
+        backgroundId: 'none',
         themeMode: ThemeMode.light,
         seedColor: AppData.defaultSeedColor,
       );

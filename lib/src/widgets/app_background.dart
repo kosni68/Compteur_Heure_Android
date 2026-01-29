@@ -1,9 +1,18 @@
 ﻿import 'package:flutter/material.dart';
 
+import '../theme/backgrounds.dart';
+
 class AppBackground extends StatelessWidget {
-  const AppBackground({super.key, required this.child});
+  const AppBackground({
+    super.key,
+    required this.child,
+    required this.backgroundId,
+    this.showGlows = true,
+  });
 
   final Widget child;
+  final String backgroundId;
+  final bool showGlows;
 
   @override
   Widget build(BuildContext context) {
@@ -17,6 +26,13 @@ class AppBackground extends StatelessWidget {
             Color(0xFF0F172A),
             Color(0xFF111827),
           ];
+    final useTransparentOverlay = backgroundId != 'none';
+    final overlayColors = useTransparentOverlay
+        ? [
+            colors[0].withOpacity(0.85),
+            colors[1].withOpacity(0.85),
+          ]
+        : colors;
     final glowA = brightness == Brightness.light
         ? const Color(0xFFFE6D73)
         : const Color(0xFF64748B);
@@ -24,16 +40,21 @@ class AppBackground extends StatelessWidget {
         ? const Color(0xFF3CB371)
         : const Color(0xFF0EA5E9);
 
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: colors,
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
+    return Stack(
+      children: [
+        Positioned.fill(child: BackgroundArt(backgroundId: backgroundId)),
+        Positioned.fill(
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: overlayColors,
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+            ),
+          ),
         ),
-      ),
-      child: Stack(
-        children: [
+        if (showGlows) ...[
           Positioned(
             right: -80,
             top: -30,
@@ -50,9 +71,9 @@ class AppBackground extends StatelessWidget {
               color: glowB,
             ),
           ),
-          Positioned.fill(child: child),
         ],
-      ),
+        Positioned.fill(child: child),
+      ],
     );
   }
 }

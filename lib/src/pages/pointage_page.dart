@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 
 import '../controller/app_controller.dart';
+import '../localization/app_localizations.dart';
 import '../models/break_interval.dart';
 import '../models/day_entry.dart';
 import '../utils/break_utils.dart';
@@ -57,6 +58,11 @@ class _PointagePageState extends State<PointagePage>
     _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
       _updateCountdown();
     });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
     _syncFromController();
   }
 
@@ -102,6 +108,7 @@ class _PointagePageState extends State<PointagePage>
   }
 
   void _recalculate() {
+    final l10n = context.l10n;
     final targetMinutes = widget.controller.data.targetMinutes;
     final targetDuration = Duration(minutes: targetMinutes);
 
@@ -120,8 +127,8 @@ class _PointagePageState extends State<PointagePage>
     DateTime? startBaseDate;
 
     if (_startTime == null) {
-      estimateError = "Renseigne l'heure de debut.";
-      pointageError = "Renseigne l'heure de debut.";
+      estimateError = l10n.errorStartRequired;
+      pointageError = l10n.errorStartRequired;
     } else {
       final now = DateTime.now();
       final baseDate = DateTime(now.year, now.month, now.day);
@@ -171,7 +178,7 @@ class _PointagePageState extends State<PointagePage>
         presence = end.difference(start);
         worked = presence - totalBreak;
         if (worked.inMinutes <= 0) {
-          pointageError = 'Horaires invalides.';
+          pointageError = l10n.errorInvalidTimes;
           actualEnd = null;
           presence = null;
           worked = null;
@@ -406,11 +413,12 @@ class _PointagePageState extends State<PointagePage>
   }
 
   Widget _header(ThemeData theme) {
+    final l10n = context.l10n;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          "Compteur d'heures",
+          l10n.appTitle,
           style: theme.textTheme.displaySmall?.copyWith(
             fontWeight: FontWeight.w600,
             color: theme.colorScheme.onSurface,
@@ -418,7 +426,7 @@ class _PointagePageState extends State<PointagePage>
         ),
         const SizedBox(height: 6),
         Text(
-          "Calcule le total de ta journee en tenant compte des pauses.",
+          l10n.headerSubtitle,
           style: theme.textTheme.bodyMedium?.copyWith(
             color: theme.colorScheme.onSurface.withOpacity(0.6),
           ),
@@ -428,22 +436,23 @@ class _PointagePageState extends State<PointagePage>
   }
 
   Widget _timeCard(ThemeData theme) {
+    final l10n = context.l10n;
     return SectionCard(
-      title: 'Pointage du jour',
-      subtitle: 'Heure de debut et de fin (format 24h).',
+      title: l10n.sectionPointage,
+      subtitle: l10n.timeCardSubtitle,
       child: Wrap(
         spacing: 12,
         runSpacing: 8,
         crossAxisAlignment: WrapCrossAlignment.center,
         children: [
           _timeButton(
-            label: 'Debut',
+            label: l10n.labelStart,
             value: formatTimeOfDay(_startTime),
             onTap: _pickStartTime,
           ),
           const Icon(Icons.arrow_forward),
           _timeButton(
-            label: 'Fin',
+            label: l10n.labelEnd,
             value: formatTimeOfDay(_endTime),
             onTap: _pickEndTime,
           ),
@@ -453,14 +462,15 @@ class _PointagePageState extends State<PointagePage>
   }
 
   Widget _breaksCard(ThemeData theme) {
+    final l10n = context.l10n;
     final breakWidgets = <Widget>[];
     for (var i = 0; i < _breaks.length; i++) {
       breakWidgets.add(_breakItem(theme, i));
     }
 
     return SectionCard(
-      title: 'Pauses',
-      subtitle: "Les pauses sont interpretees dans l'ordre de la liste.",
+      title: l10n.breaksTitle,
+      subtitle: l10n.breaksSubtitle,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -475,7 +485,7 @@ class _PointagePageState extends State<PointagePage>
           OutlinedButton.icon(
             onPressed: _addBreak,
             icon: const Icon(Icons.add),
-            label: const Text('Ajouter une pause'),
+            label: Text(l10n.addBreak),
           ),
         ],
       ),
@@ -483,6 +493,7 @@ class _PointagePageState extends State<PointagePage>
   }
 
   Widget _breakItem(ThemeData theme, int index) {
+    final l10n = context.l10n;
     final breakItem = _breaks[index];
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -504,7 +515,7 @@ class _PointagePageState extends State<PointagePage>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Pause ${index + 1}',
+                  l10n.breakLabel(index + 1),
                   style: theme.textTheme.titleSmall?.copyWith(
                     fontWeight: FontWeight.w600,
                   ),
@@ -516,13 +527,13 @@ class _PointagePageState extends State<PointagePage>
                   crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
                     _timeButton(
-                      label: 'Debut',
+                      label: l10n.labelStart,
                       value: formatTimeOfDay(breakItem.start),
                       onTap: () => _editBreakTime(index, isStart: true),
                     ),
                     const Icon(Icons.arrow_forward),
                     _timeButton(
-                      label: 'Fin',
+                      label: l10n.labelEnd,
                       value: formatTimeOfDay(breakItem.end),
                       onTap: () => _editBreakTime(index, isStart: false),
                     ),
@@ -532,7 +543,7 @@ class _PointagePageState extends State<PointagePage>
             ),
           ),
           IconButton(
-            tooltip: 'Supprimer',
+            tooltip: l10n.deleteLabel,
             onPressed: () => _removeBreak(index),
             icon: const Icon(Icons.close),
           ),
@@ -542,9 +553,10 @@ class _PointagePageState extends State<PointagePage>
   }
 
   Widget _resultCard(ThemeData theme) {
+    final l10n = context.l10n;
     final estimatedEnd = _estimatedEndDateTime;
     final estimateDayLabel =
-        _estimateDayOffset > 0 ? 'J+$_estimateDayOffset' : null;
+        _estimateDayOffset > 0 ? l10n.dayOffset(_estimateDayOffset) : null;
     final target = _targetWorkDuration;
     final estimatedBreaks = _estimatedBreakDuration;
     final remaining = _remaining;
@@ -554,7 +566,7 @@ class _PointagePageState extends State<PointagePage>
     final presence = _presenceDuration;
     final breaks = _totalBreakDuration;
     final actualDayLabel =
-        _actualDayOffset > 0 ? 'J+$_actualDayOffset' : null;
+        _actualDayOffset > 0 ? l10n.dayOffset(_actualDayOffset) : null;
 
     final targetMinutes = widget.controller.data.targetMinutes;
     final balanceMinutes =
@@ -579,12 +591,12 @@ class _PointagePageState extends State<PointagePage>
     }
 
     return SectionCard(
-      title: 'Resultat',
+      title: l10n.resultTitle,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Estimation',
+            l10n.estimationTitle,
             style: theme.textTheme.labelLarge?.copyWith(
               color: theme.colorScheme.onSurface.withOpacity(0.6),
             ),
@@ -601,14 +613,14 @@ class _PointagePageState extends State<PointagePage>
               const SizedBox(height: 6),
             ],
             Text(
-              "Renseigne l'heure de debut pour estimer la fin.",
+              l10n.estimateNeedStart,
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: theme.colorScheme.onSurface.withOpacity(0.6),
               ),
             ),
           ] else ...[
             Text(
-              'Heure de fin estimee',
+              l10n.estimatedEndLabel,
               style: theme.textTheme.labelSmall?.copyWith(
                 color: theme.colorScheme.onSurface.withOpacity(0.6),
               ),
@@ -646,20 +658,20 @@ class _PointagePageState extends State<PointagePage>
             const SizedBox(height: 14),
             if (target != null)
               InfoRow(
-                label: 'Objectif',
+                label: l10n.targetLabel,
                 value: Text(formatDuration(target)),
               ),
             if (estimatedBreaks != null)
               InfoRow(
-                label: 'Pauses prevues',
+                label: l10n.plannedBreaksLabel,
                 value: Text(formatDuration(estimatedBreaks)),
               ),
             InfoRow(
-              label: 'Compteur',
+              label: l10n.countdownLabel,
               value: AnimatedSwitcher(
                 duration: const Duration(milliseconds: 250),
                 child: Text(
-                  formatRemaining(remaining),
+                  formatRemaining(remaining, l10n),
                   key: ValueKey(remaining?.inSeconds ?? 0),
                   style: theme.textTheme.bodyLarge?.copyWith(
                     fontWeight: FontWeight.w600,
@@ -670,7 +682,7 @@ class _PointagePageState extends State<PointagePage>
           ],
           const SizedBox(height: 16),
           Text(
-            'Pointage',
+            l10n.pointageTitle,
             style: theme.textTheme.labelLarge?.copyWith(
               color: theme.colorScheme.onSurface.withOpacity(0.6),
             ),
@@ -691,14 +703,14 @@ class _PointagePageState extends State<PointagePage>
                   presence == null ||
                   breaks == null))
             Text(
-              "Renseigne l'heure de fin pour calculer le solde.",
+              l10n.pointageNeedEnd,
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: theme.colorScheme.onSurface.withOpacity(0.6),
               ),
             )
           else if (hasPointage) ...[
             Text(
-              'Heure de fin pointee',
+              l10n.loggedEndLabel,
               style: theme.textTheme.labelSmall?.copyWith(
                 color: theme.colorScheme.onSurface.withOpacity(0.6),
               ),
@@ -735,20 +747,20 @@ class _PointagePageState extends State<PointagePage>
             ),
             const SizedBox(height: 14),
             InfoRow(
-              label: 'Duree travail',
+              label: l10n.workedDurationLabel,
               value: Text(formatDuration(workedValue)),
             ),
             InfoRow(
-              label: 'Pauses',
+              label: l10n.breaksLabel,
               value: Text(formatDuration(breaksValue)),
             ),
             InfoRow(
-              label: 'Presence',
+              label: l10n.presenceLabel,
               value: Text(formatDuration(presenceValue)),
             ),
             if (balanceMinutes != null)
               InfoRow(
-                label: 'Solde vs objectif',
+                label: l10n.balanceLabel,
                 value: Text(
                   formatSignedDuration(balanceMinutes),
                   style: TextStyle(
@@ -760,8 +772,8 @@ class _PointagePageState extends State<PointagePage>
                 ),
               ),
             InfoRow(
-              label: 'Calendrier',
-              value: Text(saved ? 'Enregistre' : 'Non'),
+              label: l10n.calendarStatusLabel,
+              value: Text(saved ? l10n.savedYes : l10n.savedNo),
             ),
           ],
         ],
@@ -811,7 +823,6 @@ class _PointagePageState extends State<PointagePage>
     );
   }
 }
-
 
 class _BreakIntervalDateTime {
   const _BreakIntervalDateTime(this.start, this.end);

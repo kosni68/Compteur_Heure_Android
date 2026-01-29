@@ -1,5 +1,7 @@
 ﻿import 'package:flutter/material.dart';
 
+import '../localization/app_localizations.dart';
+
 enum DayType {
   work,
   conge,
@@ -40,19 +42,19 @@ String dayTypeToString(DayType type) {
   }
 }
 
-String dayTypeLabel(DayType type) {
+String dayTypeLabel(DayType type, AppLocalizations l10n) {
   switch (type) {
     case DayType.conge:
-      return 'Conge';
+      return l10n.dayTypeConge;
     case DayType.maladie:
-      return 'Maladie';
+      return l10n.dayTypeMaladie;
     case DayType.pont:
-      return 'Pont';
+      return l10n.dayTypePont;
     case DayType.recup:
-      return 'Recup';
+      return l10n.dayTypeRecup;
     case DayType.work:
     default:
-      return 'Travail';
+      return l10n.dayTypeWork;
   }
 }
 

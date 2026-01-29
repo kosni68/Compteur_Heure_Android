@@ -1,6 +1,7 @@
 ﻿import 'package:flutter/material.dart';
 
 import '../controller/app_controller.dart';
+import '../localization/app_localizations.dart';
 import '../widgets/app_background.dart';
 import 'calendar_page.dart';
 import 'pointage_page.dart';
@@ -30,15 +31,17 @@ class _HomeShellState extends State<HomeShell> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return GestureDetector(
       onTap: () => FocusScope.of(context).unfocus(),
       child: Scaffold(
         extendBodyBehindAppBar: true,
         appBar: AppBar(
-          title: Text(_titleForSection(_section)),
+          title: Text(_titleForSection(l10n, _section)),
         ),
-        drawer: _buildDrawer(context),
+        drawer: _buildDrawer(context, l10n),
         body: AppBackground(
+          backgroundId: widget.controller.data.backgroundId,
           child: SafeArea(
             child: SingleChildScrollView(
               padding:
@@ -71,7 +74,7 @@ class _HomeShellState extends State<HomeShell> {
     }
   }
 
-  Drawer _buildDrawer(BuildContext context) {
+  Drawer _buildDrawer(BuildContext context, AppLocalizations l10n) {
     final theme = Theme.of(context);
     return Drawer(
       child: ListView(
@@ -92,7 +95,7 @@ class _HomeShellState extends State<HomeShell> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  "Compteur d'heures",
+                  l10n.appTitle,
                   style: theme.textTheme.titleLarge?.copyWith(
                     color: theme.colorScheme.onPrimary,
                     fontWeight: FontWeight.w600,
@@ -100,7 +103,7 @@ class _HomeShellState extends State<HomeShell> {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  'Suivi simple, clair, et local.',
+                  l10n.tagline,
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: theme.colorScheme.onPrimary.withOpacity(0.85),
                   ),
@@ -111,31 +114,31 @@ class _HomeShellState extends State<HomeShell> {
           _drawerItem(
             context,
             section: HomeSection.settings,
-            label: 'Parametres',
+            label: l10n.sectionSettings,
             icon: Icons.tune,
           ),
           _drawerItem(
             context,
             section: HomeSection.theme,
-            label: 'Theme',
+            label: l10n.sectionTheme,
             icon: Icons.palette_outlined,
           ),
           _drawerItem(
             context,
             section: HomeSection.pointage,
-            label: 'Pointage du jour',
+            label: l10n.sectionPointage,
             icon: Icons.timer_outlined,
           ),
           _drawerItem(
             context,
             section: HomeSection.calendar,
-            label: 'Calendrier',
+            label: l10n.sectionCalendar,
             icon: Icons.calendar_month_outlined,
           ),
           _drawerItem(
             context,
             section: HomeSection.stats,
-            label: 'Statistiques',
+            label: l10n.sectionStats,
             icon: Icons.stacked_line_chart,
           ),
         ],
@@ -163,18 +166,18 @@ class _HomeShellState extends State<HomeShell> {
     );
   }
 
-  String _titleForSection(HomeSection section) {
+  String _titleForSection(AppLocalizations l10n, HomeSection section) {
     switch (section) {
       case HomeSection.settings:
-        return 'Parametres';
+        return l10n.sectionSettings;
       case HomeSection.theme:
-        return 'Theme';
+        return l10n.sectionTheme;
       case HomeSection.pointage:
-        return 'Pointage du jour';
+        return l10n.sectionPointage;
       case HomeSection.calendar:
-        return 'Calendrier';
+        return l10n.sectionCalendar;
       case HomeSection.stats:
-        return 'Statistiques';
+        return l10n.sectionStats;
     }
   }
 }

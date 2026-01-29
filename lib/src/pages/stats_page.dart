@@ -1,6 +1,7 @@
 ﻿import 'package:flutter/material.dart';
 
 import '../controller/app_controller.dart';
+import '../localization/app_localizations.dart';
 import '../models/day_entry.dart';
 import '../utils/date_utils.dart';
 import '../utils/format_utils.dart';
@@ -17,6 +18,7 @@ class StatsPage extends StatelessWidget {
     final theme = Theme.of(context);
     final data = controller.data;
     final entries = data.entries;
+    final l10n = context.l10n;
 
     final workEntries =
         entries.values.where((entry) => isWorkDayType(entry.type));
@@ -72,24 +74,24 @@ class StatsPage extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SectionCard(
-          title: 'Compteur global',
+          title: l10n.statsGlobalTitle,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               InfoRow(
-                label: 'Total heures',
+                label: l10n.statsTotalHours,
                 value: Text(formatDuration(Duration(minutes: totalMinutes))),
               ),
               InfoRow(
-                label: 'Jours renseignes',
+                label: l10n.statsDaysTracked,
                 value: Text('$trackedDays'),
               ),
               InfoRow(
-                label: 'Objectif cumule',
+                label: l10n.statsTargetTotal,
                 value: Text(formatDuration(Duration(minutes: targetTotal))),
               ),
               InfoRow(
-                label: 'Solde',
+                label: l10n.statsBalance,
                 value: Text(
                   formatSignedDuration(balanceMinutes),
                   style: TextStyle(
@@ -105,12 +107,12 @@ class StatsPage extends StatelessWidget {
         ),
         const SizedBox(height: 16),
         SectionCard(
-          title: 'Statistiques',
+          title: l10n.statsTitle,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               InfoRow(
-                label: 'Moyenne / jour',
+                label: l10n.statsAverage,
                 value: Text(
                   averageMinutes == null
                       ? '--'
@@ -118,7 +120,7 @@ class StatsPage extends StatelessWidget {
                 ),
               ),
               InfoRow(
-                label: 'Meilleure journee',
+                label: l10n.statsBestDay,
                 value: Text(
                   bestEntry == null || bestDate == null
                       ? '--'
@@ -126,19 +128,19 @@ class StatsPage extends StatelessWidget {
                 ),
               ),
               InfoRow(
-                label: 'Semaine en cours',
+                label: l10n.statsWeek,
                 value: Text(
                   formatDuration(Duration(minutes: weekMinutes)),
                 ),
               ),
               InfoRow(
-                label: 'Mois en cours',
+                label: l10n.statsMonth,
                 value: Text(
                   formatDuration(Duration(minutes: monthMinutes)),
                 ),
               ),
               InfoRow(
-                label: '7 derniers jours',
+                label: l10n.statsLast7,
                 value: Text(
                   formatDuration(Duration(minutes: last7Minutes)),
                 ),
@@ -149,24 +151,24 @@ class StatsPage extends StatelessWidget {
         if (congeCount + maladieCount + pontCount + recupCount > 0) ...[
           const SizedBox(height: 16),
           SectionCard(
-            title: 'Jours speciaux',
+            title: l10n.statsSpecialDays,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 InfoRow(
-                  label: 'Conge',
+                  label: l10n.dayTypeConge,
                   value: Text('$congeCount'),
                 ),
                 InfoRow(
-                  label: 'Maladie',
+                  label: l10n.dayTypeMaladie,
                   value: Text('$maladieCount'),
                 ),
                 InfoRow(
-                  label: 'Pont',
+                  label: l10n.dayTypePont,
                   value: Text('$pontCount'),
                 ),
                 InfoRow(
-                  label: 'Recup',
+                  label: l10n.dayTypeRecup,
                   value: Text('$recupCount'),
                 ),
               ],
@@ -190,4 +192,3 @@ class StatsPage extends StatelessWidget {
     );
   }
 }
-

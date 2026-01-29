@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:table_calendar/table_calendar.dart';
 
 import '../controller/app_controller.dart';
+import '../localization/app_localizations.dart';
 import '../models/day_entry.dart';
 import '../utils/date_utils.dart';
 import '../utils/format_utils.dart';
@@ -36,6 +37,11 @@ class _CalendarPageState extends State<CalendarPage> {
     _focusedDay = today;
     _selectedDay = today;
     widget.controller.addListener(_onControllerChanged);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
     _syncForSelectedDay();
   }
 
@@ -54,9 +60,14 @@ class _CalendarPageState extends State<CalendarPage> {
   }
 
   void _syncForSelectedDay() {
+    final l10n = context.l10n;
     final entry = widget.controller.data.entries[dateKey(_selectedDay)];
-    final next =
-        entry == null ? '' : formatDecimalHoursFromMinutes(entry.minutes);
+    final next = entry == null || !isWorkDayType(entry.type)
+        ? ''
+        : formatDecimalHoursFromMinutes(
+            entry.minutes,
+            decimalSeparator: l10n.decimalSeparator,
+          );
     if (_hoursController.text != next) {
       _hoursController.text = next;
     }
@@ -81,7 +92,7 @@ class _CalendarPageState extends State<CalendarPage> {
   void _onDaySelected(DateTime selected, DateTime focused) {
     if (_isFuture(selected)) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Pas de saisie dans le futur.')),
+        SnackBar(content: Text(context.l10n.calendarFutureSnack)),
       );
       return;
     }
@@ -96,10 +107,12 @@ class _CalendarPageState extends State<CalendarPage> {
   void _saveEntry() {
     final raw = _hoursController.text.trim();
     int? minutes;
-    if (raw.isEmpty) {
+    if (!isWorkDayType(_selectedType)) {
+      minutes = 0;
+    } else if (raw.isEmpty) {
       if (_selectedType == DayType.work) {
         setState(() {
-          _errorMessage = 'Valeur invalide. Exemple: 7,5';
+          _errorMessage = context.l10n.calendarInvalidValue;
         });
         return;
       }
@@ -109,7 +122,7 @@ class _CalendarPageState extends State<CalendarPage> {
     }
     if (minutes == null) {
       setState(() {
-        _errorMessage = 'Valeur invalide. Exemple: 7,5';
+        _errorMessage = context.l10n.calendarInvalidValue;
       });
       return;
     }
@@ -139,6 +152,7 @@ class _CalendarPageState extends State<CalendarPage> {
     final data = widget.controller.data;
     final entries = data.entries;
     final localeCode = data.localeCode;
+    final l10n = context.l10n;
     final isFuture = _isFuture(_selectedDay);
 
     final periodRange = _format == CalendarFormat.week
@@ -169,22 +183,22 @@ class _CalendarPageState extends State<CalendarPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SectionCard(
-          title: 'Calendrier',
-          subtitle: 'Selectionne un jour pour saisir tes heures.',
+          title: l10n.calendarTitle,
+          subtitle: l10n.calendarSubtitle,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Align(
                 alignment: Alignment.centerRight,
                 child: SegmentedButton<CalendarFormat>(
-                  segments: const [
+                  segments: [
                     ButtonSegment(
                       value: CalendarFormat.month,
-                      label: Text('Mois'),
+                      label: Text(l10n.calendarMonth),
                     ),
                     ButtonSegment(
                       value: CalendarFormat.week,
-                      label: Text('Semaine'),
+                      label: Text(l10n.calendarWeek),
                     ),
                   ],
                   selected: {_format},
@@ -259,23 +273,23 @@ class _CalendarPageState extends State<CalendarPage> {
               ),
               const SizedBox(height: 12),
               InfoRow(
-                label: 'Total periode',
+                label: l10n.calendarTotalPeriod,
                 value: Text(
                   formatDuration(Duration(minutes: periodMinutes)),
                 ),
               ),
               InfoRow(
-                label: 'Jours renseignes',
+                label: l10n.calendarDaysEntered,
                 value: Text('$periodDays'),
               ),
               InfoRow(
-                label: 'Objectif periode',
+                label: l10n.calendarPeriodTarget,
                 value: Text(
                   formatDuration(Duration(minutes: periodTarget)),
                 ),
               ),
               InfoRow(
-                label: 'Solde periode',
+                label: l10n.calendarPeriodBalance,
                 value: Text(
                   formatSignedDuration(periodBalance),
                   style: TextStyle(
@@ -291,15 +305,14 @@ class _CalendarPageState extends State<CalendarPage> {
         ),
         const SizedBox(height: 16),
         SectionCard(
-          title: 'Saisie du jour',
-          subtitle: isFuture
-              ? 'Pas de saisie autorisee dans le futur.'
-              : 'Saisis le total d\'heures pour la date selectionnee.',
+          title: l10n.dayEntryTitle,
+          subtitle:
+              isFuture ? l10n.dayEntryFutureNotAllowed : l10n.dayEntrySubtitle,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Date: ${formatDateShort(_selectedDay)}',
+                l10n.dayEntryDateLabel(formatDateShort(_selectedDay)),
                 style: theme.textTheme.titleSmall?.copyWith(
                   fontWeight: FontWeight.w600,
                 ),
@@ -310,7 +323,7 @@ class _CalendarPageState extends State<CalendarPage> {
                 runSpacing: 8,
                 children: DayType.values.map((type) {
                   return ChoiceChip(
-                    label: Text(dayTypeLabel(type)),
+                    label: Text(dayTypeLabel(type, l10n)),
                     selected: _selectedType == type,
                     onSelected: isFuture
                         ? null
@@ -318,6 +331,9 @@ class _CalendarPageState extends State<CalendarPage> {
                             setState(() {
                               _selectedType = type;
                               _errorMessage = null;
+                              if (!isWorkDayType(type)) {
+                                _hoursController.text = '';
+                              }
                             });
                           },
                   );
@@ -326,7 +342,7 @@ class _CalendarPageState extends State<CalendarPage> {
               const SizedBox(height: 10),
               TextField(
                 controller: _hoursController,
-                enabled: !isFuture,
+                enabled: !isFuture && isWorkDayType(_selectedType),
                 keyboardType: const TextInputType.numberWithOptions(
                   decimal: true,
                   signed: false,
@@ -334,9 +350,9 @@ class _CalendarPageState extends State<CalendarPage> {
                 inputFormatters: [
                   FilteringTextInputFormatter.allow(RegExp(r'[0-9,\.]')),
                 ],
-                decoration: const InputDecoration(
-                  labelText: 'Heures du jour',
-                  hintText: '7,5',
+                decoration: InputDecoration(
+                  labelText: l10n.dayEntryHoursLabel,
+                  hintText: l10n.dayEntryHoursHint,
                   suffixText: 'h',
                 ),
               ),
@@ -346,7 +362,7 @@ class _CalendarPageState extends State<CalendarPage> {
                   ElevatedButton.icon(
                     onPressed: isFuture ? null : _saveEntry,
                     icon: const Icon(Icons.save),
-                    label: const Text('Enregistrer'),
+                    label: Text(l10n.settingsSave),
                   ),
                   const SizedBox(width: 12),
                   OutlinedButton(
@@ -354,7 +370,7 @@ class _CalendarPageState extends State<CalendarPage> {
                         isFuture || !entries.containsKey(dateKey(_selectedDay))
                             ? null
                             : _clearEntry,
-                    child: const Text('Effacer'),
+                    child: Text(l10n.dayEntryClear),
                   ),
                 ],
               ),

@@ -3,8 +3,10 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'controller/app_controller.dart';
 import 'data/app_storage.dart';
+import 'localization/app_localizations.dart';
 import 'pages/home_shell.dart';
 import 'theme/app_theme.dart';
+import 'theme/backgrounds.dart';
 import 'utils/locale_utils.dart';
 import 'widgets/app_background.dart';
 
@@ -40,10 +42,17 @@ class _TimeCounterAppState extends State<TimeCounterApp> {
   Widget build(BuildContext context) {
     final controller = _controller;
     if (controller == null) {
-      return const MaterialApp(
+      return MaterialApp(
         debugShowCheckedModeBanner: false,
-        title: "Compteur d'heures",
-        home: _SplashScreen(),
+        onGenerateTitle: (context) => context.l10n.appTitle,
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        supportedLocales: kSupportedLocales,
+        home: const _SplashScreen(),
       );
     }
 
@@ -54,11 +63,12 @@ class _TimeCounterAppState extends State<TimeCounterApp> {
         final locale = localeFromCode(controller.data.localeCode);
         return MaterialApp(
           debugShowCheckedModeBanner: false,
-          title: "Compteur d'heures",
+          onGenerateTitle: (context) => context.l10n.appTitle,
           theme: buildAppTheme(seedColor, Brightness.light),
           darkTheme: buildAppTheme(seedColor, Brightness.dark),
           themeMode: controller.data.themeMode,
           localizationsDelegates: const [
+            AppLocalizations.delegate,
             GlobalMaterialLocalizations.delegate,
             GlobalWidgetsLocalizations.delegate,
             GlobalCupertinoLocalizations.delegate,
@@ -79,6 +89,7 @@ class _SplashScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return const Scaffold(
       body: AppBackground(
+        backgroundId: kDefaultBackgroundId,
         child: Center(
           child: CircularProgressIndicator(),
         ),
