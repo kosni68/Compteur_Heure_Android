@@ -1,4 +1,5 @@
-﻿import 'dart:async';
+﻿
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -375,23 +376,20 @@ class PointagePage extends StatefulWidget {
 
 class _PointagePageState extends State<PointagePage>
     with TickerProviderStateMixin {
-  final TextEditingController _targetController = TextEditingController();
-  final FocusNode _targetFocus = FocusNode();
-
   TimeOfDay? _startTime;
+  TimeOfDay? _endTime;
   List<BreakInterval> _breaks = <BreakInterval>[];
 
-  DateTime? _startDateTime;
-  DateTime? _finishDateTime;
-  Duration? _targetWorkDuration;
+  DateTime? _endDateTime;
+  Duration? _presenceDuration;
+  Duration? _workedDuration;
   Duration? _totalBreakDuration;
-  Duration? _remaining;
   int _dayOffset = 0;
   String? _errorMessage;
 
-  Timer? _ticker;
   late final AnimationController _introController;
   bool _syncing = false;
+  bool _savingEntry = false;
 
   @override
   void initState() {
@@ -401,21 +399,13 @@ class _PointagePageState extends State<PointagePage>
       duration: const Duration(milliseconds: 700),
     )..forward();
     widget.controller.addListener(_onControllerChanged);
-    _targetController.addListener(_onInputChanged);
-    _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
-      _updateCountdown();
-    });
     _syncFromController();
   }
 
   @override
   void dispose() {
     widget.controller.removeListener(_onControllerChanged);
-    _ticker?.cancel();
     _introController.dispose();
-    _targetController.removeListener(_onInputChanged);
-    _targetController.dispose();
-    _targetFocus.dispose();
     super.dispose();
   }
 
@@ -429,10 +419,6 @@ class _PointagePageState extends State<PointagePage>
   void _syncFromController() {
     final data = widget.controller.data;
     _syncing = true;
-    if (!_targetFocus.hasFocus) {
-      _targetController.text =
-          formatDecimalHoursFromMinutes(data.targetMinutes);
-    }
     _startTime = data.startTime;
     _breaks = cloneBreaks(data.breaks);
     _syncing = false;
@@ -449,10 +435,7 @@ class _PointagePageState extends State<PointagePage>
 
   void _updateControllerData() {
     final data = widget.controller.data;
-    final targetMinutes =
-        parseDecimalHoursToMinutes(_targetController.text, allowZero: false);
     final updated = data.copyWith(
-      targetMinutes: targetMinutes ?? data.targetMinutes,
       startTime: _startTime,
       breaks: cloneBreaks(_breaks),
     );
@@ -462,80 +445,90 @@ class _PointagePageState extends State<PointagePage>
   void _clearResults([String? message]) {
     setState(() {
       _errorMessage = message;
-      _startDateTime = null;
-      _finishDateTime = null;
-      _targetWorkDuration = null;
+      _endDateTime = null;
+      _presenceDuration = null;
+      _workedDuration = null;
       _totalBreakDuration = null;
-      _remaining = null;
       _dayOffset = 0;
     });
   }
 
   void _recalculate() {
-    final workMinutes =
-        parseDecimalHoursToMinutes(_targetController.text, allowZero: false);
-    if (workMinutes == null) {
-      final hasInput = _targetController.text.trim().isNotEmpty;
-      _clearResults(
-        hasInput ? "L'objectif doit etre un nombre comme 8,4." : null,
-      );
-      return;
-    }
     if (_startTime == null) {
       _clearResults("Renseigne l'heure de debut.");
+      return;
+    }
+    if (_endTime == null) {
+      _clearResults("Renseigne l'heure de fin.");
       return;
     }
 
     final now = DateTime.now();
     final baseDate = DateTime(now.year, now.month, now.day);
     final start = _dateTimeFromTimeOfDay(baseDate, _startTime!);
+    DateTime end = _dateTimeFromTimeOfDay(baseDate, _endTime!);
+    if (end.isBefore(start)) {
+      end = end.add(const Duration(days: 1));
+    }
 
     final breakIntervals = _normalizeBreaks(baseDate, start, _breaks);
-    DateTime finish = start.add(Duration(minutes: workMinutes));
     Duration totalBreak = Duration.zero;
 
     for (final interval in breakIntervals) {
-      if (interval.start.isBefore(finish)) {
-        final duration = interval.end.difference(interval.start);
-        totalBreak += duration;
-        finish = finish.add(duration);
+      if (interval.start.isBefore(end)) {
+        final effectiveEnd = interval.end.isAfter(end) ? end : interval.end;
+        if (effectiveEnd.isAfter(interval.start)) {
+          totalBreak += effectiveEnd.difference(interval.start);
+        }
       }
     }
 
-    final remaining = finish.difference(DateTime.now());
+    final presence = end.difference(start);
+    final worked = presence - totalBreak;
+    if (worked.inMinutes <= 0) {
+      _clearResults('Horaires invalides.');
+      return;
+    }
+
     setState(() {
       _errorMessage = null;
-      _startDateTime = start;
-      _finishDateTime = finish;
-      _targetWorkDuration = Duration(minutes: workMinutes);
+      _endDateTime = end;
+      _presenceDuration = presence;
+      _workedDuration = worked;
       _totalBreakDuration = totalBreak;
-      _remaining = remaining;
-      _dayOffset = finish
+      _dayOffset = end
           .difference(DateTime(start.year, start.month, start.day))
           .inDays;
     });
+
+    _maybeSaveTodayEntry(worked);
   }
 
-  void _updateCountdown() {
-    if (!mounted) {
+  void _maybeSaveTodayEntry(Duration worked) {
+    if (_savingEntry) {
       return;
     }
-    final finish = _finishDateTime;
-    if (finish == null) {
-      if (_remaining != null) {
-        setState(() {
-          _remaining = null;
-        });
-      }
+    final minutes = worked.inMinutes;
+    if (minutes <= 0) {
       return;
     }
 
-    final remaining = finish.difference(DateTime.now());
-    if (_remaining == null || remaining.inSeconds != _remaining!.inSeconds) {
-      setState(() {
-        _remaining = remaining;
-      });
+    final key = dateKey(dateOnly(DateTime.now()));
+    final data = widget.controller.data;
+    if (data.entries[key] == minutes) {
+      return;
     }
+
+    _savingEntry = true;
+    final updatedEntries = Map<String, int>.from(data.entries);
+    updatedEntries[key] = minutes;
+    unawaited(
+      widget.controller
+          .update(data.copyWith(entries: updatedEntries))
+          .whenComplete(() {
+        _savingEntry = false;
+      }),
+    );
   }
 
   Future<void> _pickStartTime() async {
@@ -546,6 +539,18 @@ class _PointagePageState extends State<PointagePage>
     }
     setState(() {
       _startTime = picked;
+    });
+    _onInputChanged();
+  }
+
+  Future<void> _pickEndTime() async {
+    final initial = _endTime ?? TimeOfDay.now();
+    final picked = await _pickTime(initial);
+    if (picked == null) {
+      return;
+    }
+    setState(() {
+      _endTime = picked;
     });
     _onInputChanged();
   }
@@ -635,18 +640,14 @@ class _PointagePageState extends State<PointagePage>
         ),
         _staggeredSection(
           index: 1,
-          child: _objectiveCard(theme),
+          child: _timeCard(theme),
         ),
         _staggeredSection(
           index: 2,
-          child: _startCard(theme),
-        ),
-        _staggeredSection(
-          index: 3,
           child: _breaksCard(theme),
         ),
         _staggeredSection(
-          index: 4,
+          index: 3,
           child: _resultCard(theme),
         ),
       ],
@@ -692,7 +693,7 @@ class _PointagePageState extends State<PointagePage>
         ),
         const SizedBox(height: 6),
         Text(
-          "Calcule l'heure de fin en tenant compte de toutes tes pauses.",
+          "Calcule le total de ta journee en tenant compte des pauses.",
           style: theme.textTheme.bodyMedium?.copyWith(
             color: theme.colorScheme.onSurface.withOpacity(0.6),
           ),
@@ -701,46 +702,25 @@ class _PointagePageState extends State<PointagePage>
     );
   }
 
-  Widget _objectiveCard(ThemeData theme) {
+  Widget _timeCard(ThemeData theme) {
     return SectionCard(
-      title: 'Objectif',
-      subtitle: "Heures decimales (ex: 8,4 = 8h24).",
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      title: 'Pointage du jour',
+      subtitle: 'Heure de debut et de fin (format 24h).',
+      child: Wrap(
+        spacing: 12,
+        runSpacing: 8,
+        crossAxisAlignment: WrapCrossAlignment.center,
         children: [
-          TextField(
-            controller: _targetController,
-            focusNode: _targetFocus,
-            keyboardType: const TextInputType.numberWithOptions(
-              decimal: true,
-              signed: false,
-            ),
-            inputFormatters: [
-              FilteringTextInputFormatter.allow(RegExp(r'[0-9,\.]')),
-            ],
-            decoration: const InputDecoration(
-              labelText: "Duree cible",
-              hintText: '8,4',
-              suffixText: 'h',
-            ),
+          _timeButton(
+            label: 'Debut',
+            value: formatTimeOfDay(_startTime),
+            onTap: _pickStartTime,
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _startCard(ThemeData theme) {
-    return SectionCard(
-      title: 'Pointage',
-      subtitle: "Heure de debut (format 24h).",
-      child: Row(
-        children: [
-          Expanded(
-            child: _timeButton(
-              label: 'Debut',
-              value: formatTimeOfDay(_startTime),
-              onTap: _pickStartTime,
-            ),
+          const Icon(Icons.arrow_forward),
+          _timeButton(
+            label: 'Fin',
+            value: formatTimeOfDay(_endTime),
+            onTap: _pickEndTime,
           ),
         ],
       ),
@@ -837,8 +817,12 @@ class _PointagePageState extends State<PointagePage>
   }
 
   Widget _resultCard(ThemeData theme) {
-    final finish = _finishDateTime;
-    if (finish == null) {
+    final end = _endDateTime;
+    final worked = _workedDuration;
+    final presence = _presenceDuration;
+    final breaks = _totalBreakDuration;
+
+    if (end == null || worked == null || presence == null || breaks == null) {
       return SectionCard(
         title: 'Resultat',
         child: Column(
@@ -854,7 +838,7 @@ class _PointagePageState extends State<PointagePage>
               const SizedBox(height: 8),
             ],
             Text(
-              "Renseigne l'objectif et l'heure de debut pour obtenir l'heure de fin.",
+              "Renseigne l'heure de debut et l'heure de fin pour calculer la journee.",
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: theme.colorScheme.onSurface.withOpacity(0.6),
               ),
@@ -865,9 +849,8 @@ class _PointagePageState extends State<PointagePage>
     }
 
     final dayLabel = _dayOffset > 0 ? 'J+$_dayOffset' : null;
-    final totalDuration = _startDateTime == null
-        ? Duration.zero
-        : finish.difference(_startDateTime!);
+    final key = dateKey(dateOnly(DateTime.now()));
+    final saved = widget.controller.data.entries[key] == worked.inMinutes;
 
     return SectionCard(
       title: 'Resultat',
@@ -875,7 +858,7 @@ class _PointagePageState extends State<PointagePage>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            "Heure de fin",
+            'Heure de fin',
             style: theme.textTheme.labelLarge?.copyWith(
               color: theme.colorScheme.onSurface.withOpacity(0.6),
             ),
@@ -884,7 +867,7 @@ class _PointagePageState extends State<PointagePage>
           Row(
             children: [
               Text(
-                formatTime(finish),
+                formatTime(end),
                 style: theme.textTheme.displaySmall?.copyWith(
                   fontWeight: FontWeight.w600,
                 ),
@@ -912,29 +895,20 @@ class _PointagePageState extends State<PointagePage>
           ),
           const SizedBox(height: 14),
           InfoRow(
-            label: 'Objectif',
-            value: Text(formatDuration(_targetWorkDuration!)),
+            label: 'Duree travail',
+            value: Text(formatDuration(worked)),
           ),
           InfoRow(
             label: 'Pauses',
-            value: Text(formatDuration(_totalBreakDuration!)),
+            value: Text(formatDuration(breaks)),
           ),
           InfoRow(
-            label: 'Duree totale',
-            value: Text(formatDuration(totalDuration)),
+            label: 'Presence',
+            value: Text(formatDuration(presence)),
           ),
           InfoRow(
-            label: 'Compteur',
-            value: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 250),
-              child: Text(
-                formatRemaining(_remaining),
-                key: ValueKey(_remaining?.inSeconds ?? 0),
-                style: theme.textTheme.bodyLarge?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
+            label: 'Calendrier',
+            value: Text(saved ? 'Enregistre' : 'Non'),
           ),
         ],
       ),
@@ -1504,8 +1478,7 @@ class StatsPage extends StatelessWidget {
         : (totalMinutes / trackedDays).round();
 
     final bestEntry = _bestEntry(entries);
-    final bestDate =
-        bestEntry == null ? null : dateFromKey(bestEntry.key);
+    final bestDate = bestEntry == null ? null : dateFromKey(bestEntry.key);
 
     final today = dateOnly(DateTime.now());
     final weekStart = startOfWeek(today);
@@ -2268,3 +2241,4 @@ int countEntriesInRange(
   }
   return count;
 }
+
