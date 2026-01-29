@@ -5,9 +5,7 @@ import 'package:flutter/services.dart';
 
 import '../controller/app_controller.dart';
 import '../localization/app_localizations.dart';
-import '../theme/backgrounds.dart';
 import '../utils/format_utils.dart';
-import '../widgets/app_background.dart';
 import '../widgets/section_card.dart';
 
 class SettingsPage extends StatefulWidget {
@@ -90,15 +88,6 @@ class _SettingsPageState extends State<SettingsPage> {
     unawaited(widget.controller.update(updated));
   }
 
-  void _updateBackground(String id) {
-    final data = widget.controller.data;
-    if (data.backgroundId == id) {
-      return;
-    }
-    final updated = data.copyWith(backgroundId: id);
-    unawaited(widget.controller.update(updated));
-  }
-
   Widget _languageChip({
     required String label,
     required String value,
@@ -118,9 +107,6 @@ class _SettingsPageState extends State<SettingsPage> {
     final selectedLanguage = _languageCodes.contains(data.localeCode)
         ? data.localeCode
         : 'fr';
-    final selectedBackground = kBackgroundIds.contains(data.backgroundId)
-        ? data.backgroundId
-        : kDefaultBackgroundId;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -203,95 +189,7 @@ class _SettingsPageState extends State<SettingsPage> {
             ],
           ),
         ),
-        const SizedBox(height: 16),
-        SectionCard(
-          title: l10n.settingsBackgroundTitle,
-          subtitle: l10n.settingsBackgroundSubtitle,
-          child: Wrap(
-            spacing: 12,
-            runSpacing: 12,
-            children: kBackgroundIds
-                .map(
-                  (id) => _BackgroundOptionTile(
-                    id: id,
-                    label: backgroundLabel(l10n, id),
-                    isSelected: selectedBackground == id,
-                    onTap: () => _updateBackground(id),
-                  ),
-                )
-                .toList(),
-          ),
-        ),
       ],
-    );
-  }
-}
-
-class _BackgroundOptionTile extends StatelessWidget {
-  const _BackgroundOptionTile({
-    required this.id,
-    required this.label,
-    required this.isSelected,
-    required this.onTap,
-  });
-
-  final String id;
-  final String label;
-  final bool isSelected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(14),
-      child: SizedBox(
-        width: 120,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            AspectRatio(
-              aspectRatio: 4 / 3,
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: Stack(
-                  children: [
-                    AppBackground(
-                      backgroundId: id,
-                      showGlows: false,
-                      child: const SizedBox.expand(),
-                    ),
-                    if (isSelected)
-                      Positioned(
-                        right: 6,
-                        top: 6,
-                        child: Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: BoxDecoration(
-                            color: theme.colorScheme.surface.withOpacity(0.8),
-                            shape: BoxShape.circle,
-                          ),
-                          child: Icon(
-                            Icons.check,
-                            size: 16,
-                            color: theme.colorScheme.primary,
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              label,
-              style: theme.textTheme.labelSmall,
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

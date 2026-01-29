@@ -10,6 +10,7 @@ Application Flutter pour calculer l'heure de fin en fonction d'un objectif en he
    - Si Flutter demande d'ecraser des fichiers, accepte puis remets `lib/main.dart` et `pubspec.yaml` de ce projet.
 3. `flutter pub get`
 4. `flutter run`
+5. flutter build apk --release
 
 ## Notes
 - Les pauses sont interpretees dans l'ordre de la liste.
