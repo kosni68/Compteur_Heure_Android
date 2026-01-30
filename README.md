@@ -4,10 +4,10 @@ Application Flutter pour suivre les heures de travail au jour le jour, estimer l
 
 ## Fonctionnalites
 
-- Pointage du jour : heure de debut/fin + pauses, estimation de fin et solde vs objectif.
-- Calendrier : saisie des heures par jour, vue mois/semaine, interdiction des dates futures.
-- Types de jour : travail, conge, maladie, pont, recup (saisie des heures desactivee hors "Travail").
-- Statistiques : cumul global, objectifs, solde, moyenne, meilleurs jours.
+- Pointage du jour : heure de debut/fin + pauses, estimation de fin, solde vs objectif, notification avant la fin estimee (configurable).
+- Calendrier : saisie des heures par jour, vue mois/semaine, bouton Aujourd'hui, export CSV, historique du jour (debut/fin/pauses), interdiction des dates futures.
+- Types de jour : travail, conge, maladie, maladie (enfant), pont, recup (saisie des heures desactivee sur conge/maladie/pont).
+- Statistiques : cumul global, objectifs, solde, moyenne, meilleurs jours, total pauses.
 - Themes : clair/sombre/auto + couleur principale.
 - Image de fond : choix d'un visuel integre (avec un degrade par-dessus).
 - Langues : Francais, Anglais, Italien, Allemand (ou systeme).

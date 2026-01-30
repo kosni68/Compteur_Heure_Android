@@ -17,6 +17,8 @@ class AppData {
     required this.entries,
     required this.localeCode,
     required this.backgroundId,
+    required this.notifyEnabled,
+    required this.notifyMinutesBefore,
     required this.themeMode,
     required this.seedColor,
   });
@@ -31,6 +33,8 @@ class AppData {
   final Map<String, DayEntry> entries;
   final String localeCode;
   final String backgroundId;
+  final bool notifyEnabled;
+  final int notifyMinutesBefore;
   final ThemeMode themeMode;
   final int seedColor;
 
@@ -42,6 +46,8 @@ class AppData {
       entries: <String, DayEntry>{},
       localeCode: 'fr',
       backgroundId: 'none',
+      notifyEnabled: false,
+      notifyMinutesBefore: 15,
       themeMode: ThemeMode.light,
       seedColor: defaultSeedColor,
     );
@@ -54,6 +60,8 @@ class AppData {
     Map<String, DayEntry>? entries,
     String? localeCode,
     String? backgroundId,
+    bool? notifyEnabled,
+    int? notifyMinutesBefore,
     ThemeMode? themeMode,
     int? seedColor,
   }) {
@@ -64,6 +72,8 @@ class AppData {
       entries: entries ?? Map<String, DayEntry>.from(this.entries),
       localeCode: localeCode ?? this.localeCode,
       backgroundId: backgroundId ?? this.backgroundId,
+      notifyEnabled: notifyEnabled ?? this.notifyEnabled,
+      notifyMinutesBefore: notifyMinutesBefore ?? this.notifyMinutesBefore,
       themeMode: themeMode ?? this.themeMode,
       seedColor: seedColor ?? this.seedColor,
     );
@@ -107,6 +117,10 @@ class AppData {
 
     final localeCode = (json['localeCode'] as String?) ?? 'fr';
     final backgroundId = (json['backgroundId'] as String?) ?? 'none';
+    final notifyEnabled = (json['notifyEnabled'] as bool?) ?? false;
+    final notifyMinutesBefore = (json['notifyMinutesBefore'] is int)
+        ? json['notifyMinutesBefore'] as int
+        : 15;
     final themeMode = themeModeFromString(json['themeMode'] as String?);
     final rawSeed = json['seedColor'];
     final seedColor = rawSeed is int ? rawSeed : defaultSeedColor;
@@ -118,6 +132,8 @@ class AppData {
       entries: entries,
       localeCode: localeCode,
       backgroundId: backgroundId,
+      notifyEnabled: notifyEnabled,
+      notifyMinutesBefore: notifyMinutesBefore,
       themeMode: themeMode,
       seedColor: seedColor,
     );
@@ -140,6 +156,8 @@ class AppData {
       ),
       'localeCode': localeCode,
       'backgroundId': backgroundId,
+      'notifyEnabled': notifyEnabled,
+      'notifyMinutesBefore': notifyMinutesBefore,
       'themeMode': themeModeToString(themeMode),
       'seedColor': seedColor,
     };

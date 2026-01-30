@@ -54,6 +54,8 @@ class AppStorage {
         entries: <String, DayEntry>{},
         localeCode: 'fr',
         backgroundId: 'none',
+        notifyEnabled: false,
+        notifyMinutesBefore: 15,
         themeMode: ThemeMode.light,
         seedColor: AppData.defaultSeedColor,
       );

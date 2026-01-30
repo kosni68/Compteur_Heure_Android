@@ -735,6 +735,132 @@ class AppLocalizations {
         'de': 'Spezielle Tage',
       });
 
+  String get statsTotalBreaks => _select({
+        'fr': 'Total pauses',
+        'en': 'Total breaks',
+        'it': 'Totale pause',
+        'de': 'Gesamtpausen',
+      });
+
+  String get historyTitle => _select({
+        'fr': 'Historique de la journee',
+        'en': 'Day history',
+        'it': 'Storico della giornata',
+        'de': 'Tagesverlauf',
+      });
+
+  String get historyStart => _select({
+        'fr': 'Heure de debut',
+        'en': 'Start time',
+        'it': 'Ora di inizio',
+        'de': 'Startzeit',
+      });
+
+  String get historyEnd => _select({
+        'fr': 'Heure de fin',
+        'en': 'End time',
+        'it': 'Ora di fine',
+        'de': 'Endzeit',
+      });
+
+  String get historyWorked => _select({
+        'fr': 'Travail effectif',
+        'en': 'Worked time',
+        'it': 'Tempo lavorato',
+        'de': 'Arbeitszeit',
+      });
+
+  String get historyBreaksTotal => _select({
+        'fr': 'Total pauses',
+        'en': 'Total breaks',
+        'it': 'Totale pause',
+        'de': 'Gesamtpausen',
+      });
+
+  String get todayLabel => _select({
+        'fr': "Aujourd'hui",
+        'en': 'Today',
+        'it': 'Oggi',
+        'de': 'Heute',
+      });
+
+  String get exportLabel => _select({
+        'fr': 'Exporter',
+        'en': 'Export',
+        'it': 'Esporta',
+        'de': 'Exportieren',
+      });
+
+  String get exportEmpty => _select({
+        'fr': 'Rien a exporter.',
+        'en': 'Nothing to export.',
+        'it': 'Niente da esportare.',
+        'de': 'Nichts zu exportieren.',
+      });
+
+  String exportSaved(String path) => _select({
+        'fr': 'Export enregistre: $path',
+        'en': 'Export saved: $path',
+        'it': 'Export salvato: $path',
+        'de': 'Export gespeichert: $path',
+      });
+
+  String get notificationsTitle => _select({
+        'fr': 'Notification fin de journee',
+        'en': 'End-of-day notification',
+        'it': 'Notifica fine giornata',
+        'de': 'Benachrichtigung Tagesende',
+      });
+
+  String get notificationsSubtitle => _select({
+        'fr': 'Alerte avant la fin estimee.',
+        'en': 'Alert before the estimated end.',
+        'it': 'Avviso prima della fine stimata.',
+        'de': 'Hinweis vor dem geschaetzten Ende.',
+      });
+
+  String get notificationsEnable => _select({
+        'fr': 'Activer la notification',
+        'en': 'Enable notification',
+        'it': 'Abilita notifica',
+        'de': 'Benachrichtigung aktivieren',
+      });
+
+  String get notificationsMinutesLabel => _select({
+        'fr': 'Minutes avant',
+        'en': 'Minutes before',
+        'it': 'Minuti prima',
+        'de': 'Minuten vorher',
+      });
+
+  String get notificationsMinutesHint => _select({
+        'fr': '15',
+        'en': '15',
+        'it': '15',
+        'de': '15',
+      });
+
+  String get notificationsInvalid => _select({
+        'fr': 'Valeur invalide. Exemple: 15',
+        'en': 'Invalid value. Example: 15',
+        'it': 'Valore non valido. Esempio: 15',
+        'de': 'Ungueltiger Wert. Beispiel: 15',
+      });
+
+  String get notificationTitle => _select({
+        'fr': 'Fin de journee proche',
+        'en': 'End of day soon',
+        'it': 'Fine giornata vicina',
+        'de': 'Tagesende naht',
+      });
+
+  String notificationBody(String time) => _select({
+        'fr': 'Fin estimee vers $time.',
+        'en': 'Estimated end around $time.',
+        'it': 'Fine stimata verso le $time.',
+        'de': 'Geschaetztes Ende gegen $time.',
+      });
+
   String get dayTypeWork => _select({
         'fr': 'Travail',
         'en': 'Work',
@@ -754,6 +880,13 @@ class AppLocalizations {
         'en': 'Sick',
         'it': 'Malattia',
         'de': 'Krank',
+      });
+
+  String get dayTypeMaladieEnfant => _select({
+        'fr': 'Maladie (enfant)',
+        'en': 'Sick (child)',
+        'it': 'Malattia (bambino)',
+        'de': 'Krank (Kind)',
       });
 
   String get dayTypePont => _select({

@@ -6,6 +6,7 @@ import '../controller/app_controller.dart';
 import '../localization/app_localizations.dart';
 import '../models/break_interval.dart';
 import '../models/day_entry.dart';
+import '../notifications/notification_service.dart';
 import '../utils/break_utils.dart';
 import '../utils/date_utils.dart';
 import '../utils/format_utils.dart';
@@ -41,6 +42,7 @@ class _PointagePageState extends State<PointagePage>
   int _actualDayOffset = 0;
   String? _estimateErrorMessage;
   String? _pointageErrorMessage;
+  String? _currentDayKey;
 
   late final AnimationController _introController;
   Timer? _ticker;
@@ -209,12 +211,15 @@ class _PointagePageState extends State<PointagePage>
     if (worked != null && startBaseDate != null) {
       _maybeSaveEntryForDate(worked, startBaseDate);
     }
+
+    _updateNotificationSchedule(estimatedEnd);
   }
 
   void _updateCountdown() {
     if (!mounted) {
       return;
     }
+    _checkDayRollover();
     final finish = _estimatedEndDateTime;
     if (finish == null) {
       if (_remaining != null) {
@@ -231,6 +236,41 @@ class _PointagePageState extends State<PointagePage>
         _remaining = remaining;
       });
     }
+  }
+
+  void _checkDayRollover() {
+    final todayKey = dateKey(dateOnly(DateTime.now()));
+    if (_currentDayKey == null) {
+      _currentDayKey = todayKey;
+      return;
+    }
+    if (_currentDayKey == todayKey) {
+      return;
+    }
+    _currentDayKey = todayKey;
+    _endTime = null;
+    _endDateTime = null;
+    _presenceDuration = null;
+    _workedDuration = null;
+    _totalBreakDuration = null;
+    _actualDayOffset = 0;
+    _pointageErrorMessage = null;
+    _recalculate();
+  }
+
+  void _updateNotificationSchedule(DateTime? estimatedEnd) {
+    final data = widget.controller.data;
+    if (!data.notifyEnabled || estimatedEnd == null || _endTime != null) {
+      unawaited(NotificationService.cancelEndReminder());
+      return;
+    }
+    unawaited(
+      NotificationService.scheduleEndReminder(
+        estimatedEnd: estimatedEnd,
+        minutesBefore: data.notifyMinutesBefore,
+        l10n: context.l10n,
+      ),
+    );
   }
 
   void _maybeSaveEntryForDate(Duration worked, DateTime startDate) {
@@ -253,7 +293,13 @@ class _PointagePageState extends State<PointagePage>
 
     _savingEntry = true;
     final updatedEntries = Map<String, DayEntry>.from(data.entries);
-    updatedEntries[key] = DayEntry(minutes: minutes, type: DayType.work);
+    updatedEntries[key] = DayEntry(
+      minutes: minutes,
+      type: DayType.work,
+      startTime: _startTime,
+      endTime: _endTime,
+      breaks: cloneBreaks(_breaks),
+    );
     unawaited(
       widget.controller
           .update(data.copyWith(entries: updatedEntries))

@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 
 import '../controller/app_controller.dart';
 import '../localization/app_localizations.dart';
+import '../notifications/notification_service.dart';
 import '../utils/format_utils.dart';
 import '../widgets/section_card.dart';
 
@@ -20,7 +21,11 @@ class SettingsPage extends StatefulWidget {
 class _SettingsPageState extends State<SettingsPage> {
   final TextEditingController _objectiveController = TextEditingController();
   final FocusNode _objectiveFocus = FocusNode();
+  final TextEditingController _notifyMinutesController =
+      TextEditingController();
+  final FocusNode _notifyMinutesFocus = FocusNode();
   String? _errorMessage;
+  String? _notifyErrorMessage;
 
   @override
   void initState() {
@@ -39,6 +44,8 @@ class _SettingsPageState extends State<SettingsPage> {
     widget.controller.removeListener(_syncFromController);
     _objectiveController.dispose();
     _objectiveFocus.dispose();
+    _notifyMinutesController.dispose();
+    _notifyMinutesFocus.dispose();
     super.dispose();
   }
 
@@ -46,17 +53,21 @@ class _SettingsPageState extends State<SettingsPage> {
     if (!mounted) {
       return;
     }
-    if (_objectiveFocus.hasFocus) {
-      return;
-    }
     final l10n = context.l10n;
-    _objectiveController.text = formatDecimalHoursFromMinutes(
-      widget.controller.data.targetMinutes,
-      decimalSeparator: l10n.decimalSeparator,
-    );
-    if (_errorMessage != null) {
+    if (!_objectiveFocus.hasFocus) {
+      _objectiveController.text = formatDecimalHoursFromMinutes(
+        widget.controller.data.targetMinutes,
+        decimalSeparator: l10n.decimalSeparator,
+      );
+    }
+    if (!_notifyMinutesFocus.hasFocus) {
+      _notifyMinutesController.text =
+          widget.controller.data.notifyMinutesBefore.toString();
+    }
+    if (_errorMessage != null || _notifyErrorMessage != null) {
       setState(() {
         _errorMessage = null;
+        _notifyErrorMessage = null;
       });
     }
   }
@@ -79,6 +90,23 @@ class _SettingsPageState extends State<SettingsPage> {
     });
   }
 
+  void _saveNotificationMinutes() {
+    final raw = _notifyMinutesController.text.trim();
+    final minutes = int.tryParse(raw);
+    if (minutes == null || minutes <= 0) {
+      setState(() {
+        _notifyErrorMessage = context.l10n.notificationsInvalid;
+      });
+      return;
+    }
+    final data = widget.controller.data;
+    final updated = data.copyWith(notifyMinutesBefore: minutes);
+    unawaited(widget.controller.update(updated));
+    setState(() {
+      _notifyErrorMessage = null;
+    });
+  }
+
   void _updateLanguage(String code) {
     final data = widget.controller.data;
     if (data.localeCode == code) {
@@ -86,6 +114,18 @@ class _SettingsPageState extends State<SettingsPage> {
     }
     final updated = data.copyWith(localeCode: code);
     unawaited(widget.controller.update(updated));
+  }
+
+  void _updateNotificationEnabled(bool value) {
+    final data = widget.controller.data;
+    if (data.notifyEnabled == value) {
+      return;
+    }
+    final updated = data.copyWith(notifyEnabled: value);
+    unawaited(widget.controller.update(updated));
+    if (!value) {
+      unawaited(NotificationService.cancelEndReminder());
+    }
   }
 
   Widget _languageChip({
@@ -107,6 +147,7 @@ class _SettingsPageState extends State<SettingsPage> {
     final selectedLanguage = _languageCodes.contains(data.localeCode)
         ? data.localeCode
         : 'fr';
+    final notificationsEnabled = data.notifyEnabled;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -144,6 +185,51 @@ class _SettingsPageState extends State<SettingsPage> {
                 const SizedBox(height: 8),
                 Text(
                   _errorMessage!,
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodySmall
+                      ?.copyWith(color: Theme.of(context).colorScheme.error),
+                ),
+              ],
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        SectionCard(
+          title: l10n.notificationsTitle,
+          subtitle: l10n.notificationsSubtitle,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SwitchListTile.adaptive(
+                contentPadding: EdgeInsets.zero,
+                value: notificationsEnabled,
+                onChanged: _updateNotificationEnabled,
+                title: Text(l10n.notificationsEnable),
+              ),
+              const SizedBox(height: 6),
+              TextField(
+                controller: _notifyMinutesController,
+                focusNode: _notifyMinutesFocus,
+                enabled: notificationsEnabled,
+                keyboardType: TextInputType.number,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                decoration: InputDecoration(
+                  labelText: l10n.notificationsMinutesLabel,
+                  hintText: l10n.notificationsMinutesHint,
+                ),
+                onSubmitted: (_) => _saveNotificationMinutes(),
+              ),
+              const SizedBox(height: 12),
+              ElevatedButton.icon(
+                onPressed: notificationsEnabled ? _saveNotificationMinutes : null,
+                icon: const Icon(Icons.save),
+                label: Text(l10n.settingsSave),
+              ),
+              if (_notifyErrorMessage != null) ...[
+                const SizedBox(height: 8),
+                Text(
+                  _notifyErrorMessage!,
                   style: Theme.of(context)
                       .textTheme
                       .bodySmall

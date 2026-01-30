@@ -54,3 +54,20 @@ List<BreakInterval> breaksFromJson(dynamic raw) {
   }
   return <BreakInterval>[];
 }
+
+int breakMinutes(List<BreakInterval> breaks) {
+  var total = 0;
+  for (final item in breaks) {
+    total += breakDuration(item).inMinutes;
+  }
+  return total;
+}
+
+Duration breakDuration(BreakInterval item) {
+  final start = item.start.hour * 60 + item.start.minute;
+  var end = item.end.hour * 60 + item.end.minute;
+  if (end < start) {
+    end += 24 * 60;
+  }
+  return Duration(minutes: end - start);
+}

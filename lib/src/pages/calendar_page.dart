@@ -1,15 +1,19 @@
 ﻿import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:table_calendar/table_calendar.dart';
 
 import '../controller/app_controller.dart';
 import '../localization/app_localizations.dart';
 import '../models/day_entry.dart';
+import '../utils/break_utils.dart';
 import '../utils/date_utils.dart';
 import '../utils/format_utils.dart';
 import '../utils/locale_utils.dart';
+import '../utils/time_utils.dart';
 import '../widgets/info_row.dart';
 import '../widgets/section_card.dart';
 
@@ -104,19 +108,26 @@ class _CalendarPageState extends State<CalendarPage> {
     _syncForSelectedDay();
   }
 
+  void _jumpToToday() {
+    final today = dateOnly(DateTime.now());
+    setState(() {
+      _selectedDay = today;
+      _focusedDay = today;
+      _errorMessage = null;
+    });
+    _syncForSelectedDay();
+  }
+
   void _saveEntry() {
     final raw = _hoursController.text.trim();
     int? minutes;
     if (!isWorkDayType(_selectedType)) {
       minutes = 0;
     } else if (raw.isEmpty) {
-      if (_selectedType == DayType.work) {
-        setState(() {
-          _errorMessage = context.l10n.calendarInvalidValue;
-        });
-        return;
-      }
-      minutes = 0;
+      setState(() {
+        _errorMessage = context.l10n.calendarInvalidValue;
+      });
+      return;
     } else {
       minutes = parseDecimalHoursToMinutes(raw, allowZero: true);
     }
@@ -128,10 +139,24 @@ class _CalendarPageState extends State<CalendarPage> {
     }
     final data = widget.controller.data;
     final updatedEntries = Map<String, DayEntry>.from(data.entries);
-    updatedEntries[dateKey(_selectedDay)] = DayEntry(
-      minutes: minutes,
-      type: _selectedType,
-    );
+    final key = dateKey(_selectedDay);
+    final existing = updatedEntries[key];
+    if (existing != null &&
+        isWorkDayType(existing.type) &&
+        isWorkDayType(_selectedType)) {
+      updatedEntries[key] = DayEntry(
+        minutes: minutes,
+        type: _selectedType,
+        startTime: existing.startTime,
+        endTime: existing.endTime,
+        breaks: cloneBreaks(existing.breaks),
+      );
+    } else {
+      updatedEntries[key] = DayEntry(
+        minutes: minutes,
+        type: _selectedType,
+      );
+    }
     unawaited(
       widget.controller.update(data.copyWith(entries: updatedEntries)),
     );
@@ -143,6 +168,53 @@ class _CalendarPageState extends State<CalendarPage> {
     updatedEntries.remove(dateKey(_selectedDay));
     unawaited(
       widget.controller.update(data.copyWith(entries: updatedEntries)),
+    );
+  }
+
+  Future<void> _exportData() async {
+    final l10n = context.l10n;
+    final entries = widget.controller.data.entries;
+    if (entries.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l10n.exportEmpty)),
+      );
+      return;
+    }
+    final keys = entries.keys.toList()..sort();
+    final buffer = StringBuffer();
+    buffer.writeln('date;type;minutes;start;end;breaks');
+    for (final key in keys) {
+      final entry = entries[key];
+      if (entry == null) {
+        continue;
+      }
+      final start = entry.startTime == null ? '' : timeToStorage(entry.startTime!);
+      final end = entry.endTime == null ? '' : timeToStorage(entry.endTime!);
+      final breaks = entry.breaks.isEmpty
+          ? ''
+          : entry.breaks
+              .map(
+                (item) =>
+                    '${timeToStorage(item.start)}-${timeToStorage(item.end)}',
+              )
+              .join('|');
+      buffer.writeln(
+        '$key;${dayTypeToString(entry.type)};${entry.minutes};$start;$end;$breaks',
+      );
+    }
+
+    final dir = await getApplicationDocumentsDirectory();
+    final now = DateTime.now();
+    final stamp =
+        '${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}_${now.hour.toString().padLeft(2, '0')}${now.minute.toString().padLeft(2, '0')}';
+    final file = File('${dir.path}/compteur_export_$stamp.csv');
+    await file.writeAsString(buffer.toString());
+
+    if (!mounted) {
+      return;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(l10n.exportSaved(file.path))),
     );
   }
 
@@ -158,13 +230,20 @@ class _CalendarPageState extends State<CalendarPage> {
     final periodRange = _format == CalendarFormat.week
         ? _weekRange(_focusedDay)
         : _monthRange(_focusedDay);
-    final periodMinutes = sumEntriesInRange(
+    final periodWorkMinutes = sumEntriesInRange(
       entries,
       periodRange.start,
       periodRange.end,
       typeFilter: DayType.work,
     );
-    final periodDays = countEntriesInRange(
+    final periodRecupMinutes = sumEntriesInRange(
+      entries,
+      periodRange.start,
+      periodRange.end,
+      typeFilter: DayType.recup,
+    );
+    final periodMinutes = periodWorkMinutes + periodRecupMinutes;
+    final periodWorkDays = countEntriesInRange(
       entries,
       periodRange.start,
       periodRange.end,
@@ -176,8 +255,15 @@ class _CalendarPageState extends State<CalendarPage> {
       periodRange.end,
       typeFilter: DayType.recup,
     );
-    final periodTarget = data.targetMinutes * (periodDays + periodRecupDays);
+    final periodDays = periodWorkDays + periodRecupDays;
+    final periodTarget = data.targetMinutes * periodWorkDays;
     final periodBalance = periodMinutes - periodTarget;
+
+    final selectedEntry = entries[dateKey(_selectedDay)];
+    final hasHistory = selectedEntry != null &&
+        (selectedEntry.startTime != null ||
+            selectedEntry.endTime != null ||
+            selectedEntry.breaks.isNotEmpty);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -188,29 +274,43 @@ class _CalendarPageState extends State<CalendarPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Align(
-                alignment: Alignment.centerRight,
-                child: SegmentedButton<CalendarFormat>(
-                  segments: [
-                    ButtonSegment(
-                      value: CalendarFormat.month,
-                      label: Text(l10n.calendarMonth),
-                    ),
-                    ButtonSegment(
-                      value: CalendarFormat.week,
-                      label: Text(l10n.calendarWeek),
-                    ),
-                  ],
-                  selected: {_format},
-                  onSelectionChanged: (selection) {
-                    if (selection.isEmpty) {
-                      return;
-                    }
-                    setState(() {
-                      _format = selection.first;
-                    });
-                  },
-                ),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                alignment: WrapAlignment.end,
+                children: [
+                  OutlinedButton.icon(
+                    onPressed: _jumpToToday,
+                    icon: const Icon(Icons.today),
+                    label: Text(l10n.todayLabel),
+                  ),
+                  SegmentedButton<CalendarFormat>(
+                    segments: [
+                      ButtonSegment(
+                        value: CalendarFormat.month,
+                        label: Text(l10n.calendarMonth),
+                      ),
+                      ButtonSegment(
+                        value: CalendarFormat.week,
+                        label: Text(l10n.calendarWeek),
+                      ),
+                    ],
+                    selected: {_format},
+                    onSelectionChanged: (selection) {
+                      if (selection.isEmpty) {
+                        return;
+                      }
+                      setState(() {
+                        _format = selection.first;
+                      });
+                    },
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: _exportData,
+                    icon: const Icon(Icons.download),
+                    label: Text(l10n.exportLabel),
+                  ),
+                ],
               ),
               const SizedBox(height: 12),
               TableCalendar<DayEntry>(
@@ -386,7 +486,60 @@ class _CalendarPageState extends State<CalendarPage> {
             ],
           ),
         ),
+        if (hasHistory) ...[
+          const SizedBox(height: 16),
+          _historyCard(theme, l10n, selectedEntry!),
+        ],
       ],
+    );
+  }
+
+  Widget _historyCard(ThemeData theme, AppLocalizations l10n, DayEntry entry) {
+    final totalBreakMinutes = breakMinutes(entry.breaks);
+    return SectionCard(
+      title: l10n.historyTitle,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (entry.startTime != null)
+            InfoRow(
+              label: l10n.historyStart,
+              value: Text(formatTimeOfDay(entry.startTime)),
+            ),
+          if (entry.endTime != null)
+            InfoRow(
+              label: l10n.historyEnd,
+              value: Text(formatTimeOfDay(entry.endTime)),
+            ),
+          InfoRow(
+            label: l10n.historyWorked,
+            value: Text(formatDuration(Duration(minutes: entry.minutes))),
+          ),
+          InfoRow(
+            label: l10n.historyBreaksTotal,
+            value: Text(formatDuration(Duration(minutes: totalBreakMinutes))),
+          ),
+          if (entry.breaks.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            ...entry.breaks.asMap().entries.map(
+              (entryItem) {
+                final index = entryItem.key + 1;
+                final item = entryItem.value;
+                final duration = breakDuration(item);
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: Text(
+                    '${l10n.breakLabel(index)} · ${formatTimeOfDay(item.start)} - ${formatTimeOfDay(item.end)} (${formatDuration(duration)})',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurface.withOpacity(0.7),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ],
+        ],
+      ),
     );
   }
 

@@ -3,6 +3,7 @@
 import '../controller/app_controller.dart';
 import '../localization/app_localizations.dart';
 import '../models/day_entry.dart';
+import '../utils/break_utils.dart';
 import '../utils/date_utils.dart';
 import '../utils/format_utils.dart';
 import '../widgets/info_row.dart';
@@ -20,15 +21,20 @@ class StatsPage extends StatelessWidget {
     final entries = data.entries;
     final l10n = context.l10n;
 
-    final workEntries =
+    final hourEntries =
         entries.values.where((entry) => isWorkDayType(entry.type));
     final totalMinutes =
-        workEntries.fold<int>(0, (sum, entry) => sum + entry.minutes);
-    final trackedDays =
-        entries.values.where((entry) => isWorkDayType(entry.type)).length;
+        hourEntries.fold<int>(0, (sum, entry) => sum + entry.minutes);
+    final totalBreakMinutes = hourEntries.fold<int>(
+      0,
+      (sum, entry) => sum + breakMinutes(entry.breaks),
+    );
+    final trackedDays = hourEntries.length;
+    final workDays =
+        entries.values.where((entry) => isTargetDayType(entry.type)).length;
     final recupCount =
         entries.values.where((entry) => entry.type == DayType.recup).length;
-    final targetTotal = data.targetMinutes * (trackedDays + recupCount);
+    final targetTotal = data.targetMinutes * workDays;
     final balanceMinutes = totalMinutes - targetTotal;
 
     final averageMinutes = trackedDays == 0
@@ -42,6 +48,8 @@ class StatsPage extends StatelessWidget {
         entries.values.where((entry) => entry.type == DayType.conge).length;
     final maladieCount =
         entries.values.where((entry) => entry.type == DayType.maladie).length;
+    final maladieEnfantCount =
+        entries.values.where((entry) => entry.type == DayType.maladieEnfant).length;
     final pontCount =
         entries.values.where((entry) => entry.type == DayType.pont).length;
     final today = dateOnly(DateTime.now());
@@ -52,23 +60,41 @@ class StatsPage extends StatelessWidget {
     final last7Start = today.subtract(const Duration(days: 6));
 
     final weekMinutes = sumEntriesInRange(
-      entries,
-      weekStart,
-      weekEnd,
-      typeFilter: DayType.work,
-    );
+          entries,
+          weekStart,
+          weekEnd,
+          typeFilter: DayType.work,
+        ) +
+        sumEntriesInRange(
+          entries,
+          weekStart,
+          weekEnd,
+          typeFilter: DayType.recup,
+        );
     final monthMinutes = sumEntriesInRange(
-      entries,
-      monthStart,
-      monthEnd,
-      typeFilter: DayType.work,
-    );
+          entries,
+          monthStart,
+          monthEnd,
+          typeFilter: DayType.work,
+        ) +
+        sumEntriesInRange(
+          entries,
+          monthStart,
+          monthEnd,
+          typeFilter: DayType.recup,
+        );
     final last7Minutes = sumEntriesInRange(
-      entries,
-      last7Start,
-      today,
-      typeFilter: DayType.work,
-    );
+          entries,
+          last7Start,
+          today,
+          typeFilter: DayType.work,
+        ) +
+        sumEntriesInRange(
+          entries,
+          last7Start,
+          today,
+          typeFilter: DayType.recup,
+        );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -81,6 +107,11 @@ class StatsPage extends StatelessWidget {
               InfoRow(
                 label: l10n.statsTotalHours,
                 value: Text(formatDuration(Duration(minutes: totalMinutes))),
+              ),
+              InfoRow(
+                label: l10n.statsTotalBreaks,
+                value:
+                    Text(formatDuration(Duration(minutes: totalBreakMinutes))),
               ),
               InfoRow(
                 label: l10n.statsDaysTracked,
@@ -148,7 +179,7 @@ class StatsPage extends StatelessWidget {
             ],
           ),
         ),
-        if (congeCount + maladieCount + pontCount + recupCount > 0) ...[
+        if (congeCount + maladieCount + maladieEnfantCount + pontCount + recupCount > 0) ...[
           const SizedBox(height: 16),
           SectionCard(
             title: l10n.statsSpecialDays,
@@ -162,6 +193,10 @@ class StatsPage extends StatelessWidget {
                 InfoRow(
                   label: l10n.dayTypeMaladie,
                   value: Text('$maladieCount'),
+                ),
+                InfoRow(
+                  label: l10n.dayTypeMaladieEnfant,
+                  value: Text('$maladieEnfantCount'),
                 ),
                 InfoRow(
                   label: l10n.dayTypePont,
