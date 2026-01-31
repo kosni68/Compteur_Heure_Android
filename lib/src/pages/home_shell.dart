@@ -1,7 +1,10 @@
-﻿import 'package:flutter/material.dart';
+import 'dart:async';
+
+import 'package:flutter/material.dart';
 
 import '../controller/app_controller.dart';
 import '../localization/app_localizations.dart';
+import '../notifications/notification_service.dart';
 import '../widgets/app_background.dart';
 import 'calendar_page.dart';
 import 'pointage_page.dart';
@@ -28,6 +31,41 @@ class HomeShell extends StatefulWidget {
 
 class _HomeShellState extends State<HomeShell> {
   HomeSection _section = HomeSection.pointage;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.controller.addListener(_syncNotification);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(NotificationService.requestNotificationsPermission());
+      _syncNotification();
+    });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _syncNotification();
+  }
+
+  @override
+  void dispose() {
+    widget.controller.removeListener(_syncNotification);
+    super.dispose();
+  }
+
+  void _syncNotification() {
+    if (!mounted) {
+      return;
+    }
+    final l10n = context.l10n;
+    unawaited(
+      NotificationService.updatePointageNotification(
+        widget.controller.data,
+        l10n,
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {

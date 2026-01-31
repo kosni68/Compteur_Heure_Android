@@ -87,6 +87,7 @@ class _PointagePageState extends State<PointagePage>
     final data = widget.controller.data;
     _syncing = true;
     _startTime = data.startTime;
+    _endTime = data.endTime;
     _breaks = cloneBreaks(data.breaks);
     _syncing = false;
     _recalculate();
@@ -102,9 +103,14 @@ class _PointagePageState extends State<PointagePage>
 
   void _updateControllerData() {
     final data = widget.controller.data;
+    final trackingDayKey = _startTime == null
+        ? data.trackingDayKey
+        : dateKey(dateOnly(DateTime.now()));
     final updated = data.copyWith(
       startTime: _startTime,
+      endTime: _endTime,
       breaks: cloneBreaks(_breaks),
+      trackingDayKey: trackingDayKey,
     );
     unawaited(widget.controller.update(updated));
   }
@@ -248,14 +254,22 @@ class _PointagePageState extends State<PointagePage>
       return;
     }
     _currentDayKey = todayKey;
-    _endTime = null;
-    _endDateTime = null;
-    _presenceDuration = null;
-    _workedDuration = null;
-    _totalBreakDuration = null;
-    _actualDayOffset = 0;
-    _pointageErrorMessage = null;
-    _recalculate();
+    final data = widget.controller.data;
+    if (data.trackingDayKey != todayKey &&
+        data.endTime != null &&
+        data.startTime != null) {
+      final updated = data.copyWith(endTime: null, pauseStartTime: null);
+      unawaited(widget.controller.update(updated));
+    } else {
+      _endTime = null;
+      _endDateTime = null;
+      _presenceDuration = null;
+      _workedDuration = null;
+      _totalBreakDuration = null;
+      _actualDayOffset = 0;
+      _pointageErrorMessage = null;
+      _recalculate();
+    }
   }
 
   void _updateNotificationSchedule(DateTime? estimatedEnd) {

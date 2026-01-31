@@ -13,8 +13,12 @@ class AppData {
   AppData({
     required this.targetMinutes,
     required this.startTime,
+    required this.endTime,
     required this.breaks,
     required this.entries,
+    required this.trackingDayKey,
+    required this.pauseStartTime,
+    required this.pauseReminderMinutes,
     required this.localeCode,
     required this.backgroundId,
     required this.notifyEnabled,
@@ -24,13 +28,18 @@ class AppData {
   });
 
   static const int defaultSeedColor = 0xFF168377;
+  static const int defaultPauseReminderMinutes = 30;
   static final int defaultTargetMinutes =
       parseDecimalHoursToMinutes('8.4', allowZero: false) ?? 504;
 
   final int targetMinutes;
   final TimeOfDay? startTime;
+  final TimeOfDay? endTime;
   final List<BreakInterval> breaks;
   final Map<String, DayEntry> entries;
+  final String? trackingDayKey;
+  final TimeOfDay? pauseStartTime;
+  final int pauseReminderMinutes;
   final String localeCode;
   final String backgroundId;
   final bool notifyEnabled;
@@ -42,8 +51,12 @@ class AppData {
     return AppData(
       targetMinutes: defaultTargetMinutes,
       startTime: null,
+      endTime: null,
       breaks: const <BreakInterval>[],
       entries: <String, DayEntry>{},
+      trackingDayKey: null,
+      pauseStartTime: null,
+      pauseReminderMinutes: defaultPauseReminderMinutes,
       localeCode: 'fr',
       backgroundId: 'none',
       notifyEnabled: false,
@@ -56,8 +69,12 @@ class AppData {
   AppData copyWith({
     int? targetMinutes,
     Object? startTime = _unset,
+    Object? endTime = _unset,
     List<BreakInterval>? breaks,
     Map<String, DayEntry>? entries,
+    Object? trackingDayKey = _unset,
+    Object? pauseStartTime = _unset,
+    int? pauseReminderMinutes,
     String? localeCode,
     String? backgroundId,
     bool? notifyEnabled,
@@ -68,8 +85,16 @@ class AppData {
     return AppData(
       targetMinutes: targetMinutes ?? this.targetMinutes,
       startTime: startTime == _unset ? this.startTime : startTime as TimeOfDay?,
+      endTime: endTime == _unset ? this.endTime : endTime as TimeOfDay?,
       breaks: breaks ?? cloneBreaks(this.breaks),
       entries: entries ?? Map<String, DayEntry>.from(this.entries),
+      trackingDayKey: trackingDayKey == _unset
+          ? this.trackingDayKey
+          : trackingDayKey as String?,
+      pauseStartTime: pauseStartTime == _unset
+          ? this.pauseStartTime
+          : pauseStartTime as TimeOfDay?,
+      pauseReminderMinutes: pauseReminderMinutes ?? this.pauseReminderMinutes,
       localeCode: localeCode ?? this.localeCode,
       backgroundId: backgroundId ?? this.backgroundId,
       notifyEnabled: notifyEnabled ?? this.notifyEnabled,
@@ -97,6 +122,8 @@ class AppData {
 
     final rawStart = json['startTime'];
     final startTime = rawStart is String ? timeFromStorage(rawStart) : null;
+    final rawEnd = json['endTime'];
+    final endTime = rawEnd is String ? timeFromStorage(rawEnd) : null;
 
     final rawBreaks = json['breaks'];
     final breaks = breaksFromJson(rawBreaks);
@@ -117,6 +144,13 @@ class AppData {
 
     final localeCode = (json['localeCode'] as String?) ?? 'fr';
     final backgroundId = (json['backgroundId'] as String?) ?? 'none';
+    final trackingDayKey = json['trackingDayKey'] as String?;
+    final rawPauseStart = json['pauseStartTime'];
+    final pauseStartTime =
+        rawPauseStart is String ? timeFromStorage(rawPauseStart) : null;
+    final pauseReminderMinutes = (json['pauseReminderMinutes'] is int)
+        ? json['pauseReminderMinutes'] as int
+        : defaultPauseReminderMinutes;
     final notifyEnabled = (json['notifyEnabled'] as bool?) ?? false;
     final notifyMinutesBefore = (json['notifyMinutesBefore'] is int)
         ? json['notifyMinutesBefore'] as int
@@ -128,8 +162,12 @@ class AppData {
     return AppData(
       targetMinutes: targetMinutes,
       startTime: startTime,
+      endTime: endTime,
       breaks: breaks,
       entries: entries,
+      trackingDayKey: trackingDayKey,
+      pauseStartTime: pauseStartTime,
+      pauseReminderMinutes: pauseReminderMinutes,
       localeCode: localeCode,
       backgroundId: backgroundId,
       notifyEnabled: notifyEnabled,
@@ -143,6 +181,7 @@ class AppData {
     return {
       'targetMinutes': targetMinutes,
       'startTime': startTime == null ? null : timeToStorage(startTime!),
+      'endTime': endTime == null ? null : timeToStorage(endTime!),
       'breaks': breaks
           .map(
             (breakItem) => {
@@ -154,6 +193,10 @@ class AppData {
       'entries': entries.map(
         (key, value) => MapEntry<String, dynamic>(key, value.toJson()),
       ),
+      'trackingDayKey': trackingDayKey,
+      'pauseStartTime':
+          pauseStartTime == null ? null : timeToStorage(pauseStartTime!),
+      'pauseReminderMinutes': pauseReminderMinutes,
       'localeCode': localeCode,
       'backgroundId': backgroundId,
       'notifyEnabled': notifyEnabled,

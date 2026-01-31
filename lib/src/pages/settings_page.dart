@@ -24,8 +24,12 @@ class _SettingsPageState extends State<SettingsPage> {
   final TextEditingController _notifyMinutesController =
       TextEditingController();
   final FocusNode _notifyMinutesFocus = FocusNode();
+  final TextEditingController _pauseMinutesController =
+      TextEditingController();
+  final FocusNode _pauseMinutesFocus = FocusNode();
   String? _errorMessage;
   String? _notifyErrorMessage;
+  String? _pauseErrorMessage;
 
   @override
   void initState() {
@@ -46,6 +50,8 @@ class _SettingsPageState extends State<SettingsPage> {
     _objectiveFocus.dispose();
     _notifyMinutesController.dispose();
     _notifyMinutesFocus.dispose();
+    _pauseMinutesController.dispose();
+    _pauseMinutesFocus.dispose();
     super.dispose();
   }
 
@@ -64,10 +70,17 @@ class _SettingsPageState extends State<SettingsPage> {
       _notifyMinutesController.text =
           widget.controller.data.notifyMinutesBefore.toString();
     }
-    if (_errorMessage != null || _notifyErrorMessage != null) {
+    if (!_pauseMinutesFocus.hasFocus) {
+      _pauseMinutesController.text =
+          widget.controller.data.pauseReminderMinutes.toString();
+    }
+    if (_errorMessage != null ||
+        _notifyErrorMessage != null ||
+        _pauseErrorMessage != null) {
       setState(() {
         _errorMessage = null;
         _notifyErrorMessage = null;
+        _pauseErrorMessage = null;
       });
     }
   }
@@ -104,6 +117,23 @@ class _SettingsPageState extends State<SettingsPage> {
     unawaited(widget.controller.update(updated));
     setState(() {
       _notifyErrorMessage = null;
+    });
+  }
+
+  void _savePauseReminderMinutes() {
+    final raw = _pauseMinutesController.text.trim();
+    final minutes = int.tryParse(raw);
+    if (minutes == null || minutes <= 0) {
+      setState(() {
+        _pauseErrorMessage = context.l10n.pauseReminderInvalid;
+      });
+      return;
+    }
+    final data = widget.controller.data;
+    final updated = data.copyWith(pauseReminderMinutes: minutes);
+    unawaited(widget.controller.update(updated));
+    setState(() {
+      _pauseErrorMessage = null;
     });
   }
 
@@ -230,6 +260,43 @@ class _SettingsPageState extends State<SettingsPage> {
                 const SizedBox(height: 8),
                 Text(
                   _notifyErrorMessage!,
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodySmall
+                      ?.copyWith(color: Theme.of(context).colorScheme.error),
+                ),
+              ],
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        SectionCard(
+          title: l10n.pauseReminderTitle,
+          subtitle: l10n.pauseReminderSubtitle,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              TextField(
+                controller: _pauseMinutesController,
+                focusNode: _pauseMinutesFocus,
+                keyboardType: TextInputType.number,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                decoration: InputDecoration(
+                  labelText: l10n.pauseReminderMinutesLabel,
+                  hintText: l10n.pauseReminderMinutesHint,
+                ),
+                onSubmitted: (_) => _savePauseReminderMinutes(),
+              ),
+              const SizedBox(height: 12),
+              ElevatedButton.icon(
+                onPressed: _savePauseReminderMinutes,
+                icon: const Icon(Icons.save),
+                label: Text(l10n.settingsSave),
+              ),
+              if (_pauseErrorMessage != null) ...[
+                const SizedBox(height: 8),
+                Text(
+                  _pauseErrorMessage!,
                   style: Theme.of(context)
                       .textTheme
                       .bodySmall

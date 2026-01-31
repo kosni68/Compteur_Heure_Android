@@ -847,6 +847,55 @@ class AppLocalizations {
         'de': 'Ungueltiger Wert. Beispiel: 15',
       });
 
+  String get pauseReminderTitle => _select({
+        'fr': 'Rappel de reprise',
+        'en': 'Break reminder',
+        'it': 'Promemoria ripresa',
+        'de': 'Pausen-Erinnerung',
+      });
+
+  String get pauseReminderSubtitle => _select({
+        'fr': 'Alerte apres une pause.',
+        'en': 'Alert after a break.',
+        'it': 'Avviso dopo una pausa.',
+        'de': 'Hinweis nach einer Pause.',
+      });
+
+  String get pauseReminderMinutesLabel => _select({
+        'fr': 'Minutes de pause',
+        'en': 'Break minutes',
+        'it': 'Minuti di pausa',
+        'de': 'Pausenminuten',
+      });
+
+  String get pauseReminderMinutesHint => _select({
+        'fr': '30',
+        'en': '30',
+        'it': '30',
+        'de': '30',
+      });
+
+  String get pauseReminderInvalid => _select({
+        'fr': 'Valeur invalide. Exemple: 30',
+        'en': 'Invalid value. Example: 30',
+        'it': 'Valore non valido. Esempio: 30',
+        'de': 'Ungueltiger Wert. Beispiel: 30',
+      });
+
+  String get pauseReminderNotificationTitle => _select({
+        'fr': 'Reprise du pointage',
+        'en': 'Resume tracking',
+        'it': 'Riprendi la timbratura',
+        'de': 'Erfassung fortsetzen',
+      });
+
+  String get pauseReminderNotificationBody => _select({
+        'fr': 'Ta pause est terminee. Reprends le pointage.',
+        'en': 'Your break is over. Resume tracking.',
+        'it': 'La pausa e finita. Riprendi la timbratura.',
+        'de': 'Deine Pause ist vorbei. Erfassung fortsetzen.',
+      });
+
   String get notificationTitle => _select({
         'fr': 'Fin de journee proche',
         'en': 'End of day soon',
@@ -859,6 +908,111 @@ class AppLocalizations {
         'en': 'Estimated end around $time.',
         'it': 'Fine stimata verso le $time.',
         'de': 'Geschaetztes Ende gegen $time.',
+      });
+
+  String get pointageActionStart => _select({
+        'fr': 'Debut de pointage',
+        'en': 'Start tracking',
+        'it': 'Inizia timbratura',
+        'de': 'Erfassung starten',
+      });
+
+  String get pointageActionEnd => _select({
+        'fr': 'Fin de pointage',
+        'en': 'End tracking',
+        'it': 'Fine timbratura',
+        'de': 'Erfassung beenden',
+      });
+
+  String get pointageActionPause => _select({
+        'fr': 'Pause',
+        'en': 'Pause',
+        'it': 'Pausa',
+        'de': 'Pause',
+      });
+
+  String get pointageNotificationChannelName => _select({
+        'fr': 'Pointage',
+        'en': 'Tracking',
+        'it': 'Timbratura',
+        'de': 'Erfassung',
+      });
+
+  String get pointageNotificationChannelDescription => _select({
+        'fr': 'Notification persistante du pointage.',
+        'en': 'Persistent tracking notification.',
+        'it': 'Notifica persistente della timbratura.',
+        'de': 'Persistente Erfassungsbenachrichtigung.',
+      });
+
+  String get pauseReminderChannelName => _select({
+        'fr': 'Rappel de pause',
+        'en': 'Break reminder',
+        'it': 'Promemoria pausa',
+        'de': 'Pausen-Erinnerung',
+      });
+
+  String get pauseReminderChannelDescription => _select({
+        'fr': 'Rappel pour reprendre apres une pause.',
+        'en': 'Reminder to resume after a break.',
+        'it': 'Promemoria per riprendere dopo una pausa.',
+        'de': 'Erinnerung zum Fortsetzen nach einer Pause.',
+      });
+
+  String get pointageNotificationTitleIdle => _select({
+        'fr': 'Pointage',
+        'en': 'Tracking',
+        'it': 'Timbratura',
+        'de': 'Erfassung',
+      });
+
+  String get pointageNotificationTitleRunning => _select({
+        'fr': 'Pointage en cours',
+        'en': 'Tracking in progress',
+        'it': 'Timbratura in corso',
+        'de': 'Erfassung laeuft',
+      });
+
+  String get pointageNotificationTitlePaused => _select({
+        'fr': 'Pause en cours',
+        'en': 'Paused',
+        'it': 'Pausa in corso',
+        'de': 'Pausiert',
+      });
+
+  String get pointageNotificationTitleEnded => _select({
+        'fr': 'Pointage termine',
+        'en': 'Tracking ended',
+        'it': 'Timbratura terminata',
+        'de': 'Erfassung beendet',
+      });
+
+  String get pointageNotificationBodyIdle => _select({
+        'fr': 'Appuie pour commencer.',
+        'en': 'Tap to start.',
+        'it': 'Tocca per iniziare.',
+        'de': 'Tippen zum Starten.',
+      });
+
+  String pointageNotificationBodyRunning(String time) => _select({
+        'fr': 'Debut a $time.',
+        'en': 'Started at $time.',
+        'it': 'Inizio alle $time.',
+        'de': 'Gestartet um $time.',
+      });
+
+  String pointageNotificationBodyPaused(String time) => _select({
+        'fr': 'Pause depuis $time.',
+        'en': 'Paused since $time.',
+        'it': 'Pausa dalle $time.',
+        'de': 'Pause seit $time.',
+      });
+
+  String pointageNotificationBodyEnded(String time) => _select({
+        'fr': 'Fin a $time.',
+        'en': 'Ended at $time.',
+        'it': 'Fine alle $time.',
+        'de': 'Beendet um $time.',
       });
 
   String get dayTypeWork => _select({

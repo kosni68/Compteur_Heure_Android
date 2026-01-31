@@ -50,8 +50,12 @@ class AppStorage {
       return AppData(
         targetMinutes: targetMinutes,
         startTime: timeFromStorage(startRaw),
+        endTime: null,
         breaks: breaksFromStorage(breaksRaw),
         entries: <String, DayEntry>{},
+        trackingDayKey: null,
+        pauseStartTime: null,
+        pauseReminderMinutes: AppData.defaultPauseReminderMinutes,
         localeCode: 'fr',
         backgroundId: 'none',
         notifyEnabled: false,

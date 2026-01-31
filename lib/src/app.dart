@@ -1,9 +1,12 @@
-﻿import 'package:flutter/material.dart';
+import 'dart:async';
+
+import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'controller/app_controller.dart';
 import 'data/app_storage.dart';
 import 'localization/app_localizations.dart';
+import 'notifications/notification_service.dart';
 import 'pages/home_shell.dart';
 import 'theme/app_theme.dart';
 import 'theme/backgrounds.dart';
@@ -33,8 +36,10 @@ class _TimeCounterAppState extends State<TimeCounterApp> {
     if (!mounted) {
       return;
     }
+    final controller = AppController(_storage, data);
+    NotificationService.bindController(controller);
     setState(() {
-      _controller = AppController(_storage, data);
+      _controller = controller;
     });
   }
 
