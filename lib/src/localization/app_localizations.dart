@@ -742,6 +742,174 @@ class AppLocalizations {
         'de': 'Gesamtpausen',
       });
 
+  String get statsChartsTitle => _select({
+        'fr': 'Graphiques',
+        'en': 'Charts',
+        'it': 'Grafici',
+        'de': 'Diagramme',
+      });
+
+  String get statsDailyTrend30Title => _select({
+        'fr': 'Heures / jour (30 jours)',
+        'en': 'Hours / day (30 days)',
+        'it': 'Ore / giorno (30 giorni)',
+        'de': 'Stunden/Tag (30 Tage)',
+      });
+
+  String get statsDailyTrend90Title => _select({
+        'fr': 'Heures / jour (90 jours)',
+        'en': 'Hours / day (90 days)',
+        'it': 'Ore / giorno (90 giorni)',
+        'de': 'Stunden/Tag (90 Tage)',
+      });
+
+  String get statsDailyTrendSubtitle => _select({
+        'fr': 'Moyenne mobile 7 jours',
+        'en': '7-day moving average',
+        'it': 'Media mobile 7 giorni',
+        'de': '7-Tage-Durchschnitt',
+      });
+
+  String get statsWeeklyTotalsTitle => _select({
+        'fr': 'Total par semaine',
+        'en': 'Weekly totals',
+        'it': 'Totale settimanale',
+        'de': 'Wochensummen',
+      });
+
+  String get statsWeeklyTotalsSubtitle => _select({
+        'fr': '12 dernieres semaines',
+        'en': 'Last 12 weeks',
+        'it': 'Ultime 12 settimane',
+        'de': 'Letzte 12 Wochen',
+      });
+
+  String get statsMonthlyCumulativeTitle => _select({
+        'fr': 'Cumul du mois',
+        'en': 'Monthly cumulative',
+        'it': 'Cumulativo del mese',
+        'de': 'Monatliche Summe',
+      });
+
+  String get statsMonthlyCumulativeSubtitle => _select({
+        'fr': 'Realise vs objectif',
+        'en': 'Actual vs target',
+        'it': 'Fatto vs obiettivo',
+        'de': 'Ist vs Ziel',
+      });
+
+  String get statsBalanceCumulativeTitle => _select({
+        'fr': 'Solde cumule',
+        'en': 'Cumulative balance',
+        'it': 'Saldo cumulato',
+        'de': 'Kumulierte Bilanz',
+      });
+
+  String get statsBalanceCumulativeSubtitle => _select({
+        'fr': 'Realise - cible (90 jours)',
+        'en': 'Actual - target (90 days)',
+        'it': 'Fatto - obiettivo (90 giorni)',
+        'de': 'Ist - Ziel (90 Tage)',
+      });
+
+  String get statsDayTypeDistributionTitle => _select({
+        'fr': 'Repartition des types de jours',
+        'en': 'Day type distribution',
+        'it': 'Distribuzione dei tipi di giorno',
+        'de': 'Verteilung der Tagtypen',
+      });
+
+  String get statsDayTypeDistributionSubtitle => _select({
+        'fr': 'Nombre de jours',
+        'en': 'Day count',
+        'it': 'Numero di giorni',
+        'de': 'Anzahl der Tage',
+      });
+
+  String get statsWorkBreaksTitle => _select({
+        'fr': 'Travail vs pauses',
+        'en': 'Work vs breaks',
+        'it': 'Lavoro vs pause',
+        'de': 'Arbeit vs Pausen',
+      });
+
+  String get statsWorkBreaksSubtitle => _select({
+        'fr': 'Totaux hebdomadaires',
+        'en': 'Weekly totals',
+        'it': 'Totali settimanali',
+        'de': 'Wochensummen',
+      });
+
+  String get statsHeatmapTitle => _select({
+        'fr': 'Heatmap des heures',
+        'en': 'Hours heatmap',
+        'it': 'Heatmap delle ore',
+        'de': 'Stunden-Heatmap',
+      });
+
+  String get statsHeatmapSubtitle => _select({
+        'fr': 'Dernieres 12 semaines',
+        'en': 'Last 12 weeks',
+        'it': 'Ultime 12 settimane',
+        'de': 'Letzte 12 Wochen',
+      });
+
+  String get statsBreakHistogramTitle => _select({
+        'fr': 'Duree des pauses',
+        'en': 'Break duration',
+        'it': 'Durata delle pause',
+        'de': 'Pausendauer',
+      });
+
+  String get statsBreakHistogramSubtitle => _select({
+        'fr': 'Distribution',
+        'en': 'Distribution',
+        'it': 'Distribuzione',
+        'de': 'Verteilung',
+      });
+
+  String get statsStartEndScatterTitle => _select({
+        'fr': 'Heures de debut / fin',
+        'en': 'Start / end times',
+        'it': 'Orari di inizio / fine',
+        'de': 'Start-/Endzeiten',
+      });
+
+  String get statsStartEndScatterSubtitle => _select({
+        'fr': 'Nuage de points (0-24h)',
+        'en': 'Scatter (0-24h)',
+        'it': 'Dispersione (0-24h)',
+        'de': 'Streudiagramm (0-24h)',
+      });
+
+  String get statsLegendDaily => _select({
+        'fr': 'Heures/jour',
+        'en': 'Hours/day',
+        'it': 'Ore/giorno',
+        'de': 'Stunden/Tag',
+      });
+
+  String get statsLegendAverage7 => _select({
+        'fr': 'Moyenne 7j',
+        'en': '7-day avg',
+        'it': 'Media 7g',
+        'de': '7-Tage-Avg',
+      });
+
+  String get statsLegendActual => _select({
+        'fr': 'Realise',
+        'en': 'Actual',
+        'it': 'Fatto',
+        'de': 'Ist',
+      });
+
+  String get statsNoData => _select({
+        'fr': 'Aucune donnee',
+        'en': 'No data yet',
+        'it': 'Nessun dato',
+        'de': 'Keine Daten',
+      });
+
   String get historyTitle => _select({
         'fr': 'Historique de la journee',
         'en': 'Day history',
