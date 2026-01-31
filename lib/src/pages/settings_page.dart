@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import '../controller/app_controller.dart';
 import '../localization/app_localizations.dart';
 import '../notifications/notification_service.dart';
+import '../models/pause_reminder_type.dart';
 import '../utils/format_utils.dart';
 import '../widgets/section_card.dart';
 
@@ -30,6 +31,7 @@ class _SettingsPageState extends State<SettingsPage> {
   String? _errorMessage;
   String? _notifyErrorMessage;
   String? _pauseErrorMessage;
+  PauseReminderType _pauseReminderType = PauseReminderType.notification;
 
   @override
   void initState() {
@@ -73,6 +75,12 @@ class _SettingsPageState extends State<SettingsPage> {
     if (!_pauseMinutesFocus.hasFocus) {
       _pauseMinutesController.text =
           widget.controller.data.pauseReminderMinutes.toString();
+    }
+    final nextPauseType = widget.controller.data.pauseReminderType;
+    if (_pauseReminderType != nextPauseType) {
+      setState(() {
+        _pauseReminderType = nextPauseType;
+      });
     }
     if (_errorMessage != null ||
         _notifyErrorMessage != null ||
@@ -155,6 +163,18 @@ class _SettingsPageState extends State<SettingsPage> {
     unawaited(widget.controller.update(updated));
     if (!value) {
       unawaited(NotificationService.cancelEndReminder());
+    }
+  }
+
+  void _updatePauseReminderType(PauseReminderType type) {
+    final data = widget.controller.data;
+    if (data.pauseReminderType == type) {
+      return;
+    }
+    final updated = data.copyWith(pauseReminderType: type);
+    unawaited(widget.controller.update(updated));
+    if (type == PauseReminderType.alarm) {
+      unawaited(NotificationService.requestFullScreenIntentPermission());
     }
   }
 
@@ -276,6 +296,29 @@ class _SettingsPageState extends State<SettingsPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              DropdownButtonFormField<PauseReminderType>(
+                value: _pauseReminderType,
+                decoration: InputDecoration(
+                  labelText: l10n.pauseReminderTypeLabel,
+                ),
+                items: [
+                  DropdownMenuItem(
+                    value: PauseReminderType.notification,
+                    child: Text(l10n.pauseReminderTypeNotification),
+                  ),
+                  DropdownMenuItem(
+                    value: PauseReminderType.alarm,
+                    child: Text(l10n.pauseReminderTypeAlarm),
+                  ),
+                ],
+                onChanged: (value) {
+                  if (value == null) {
+                    return;
+                  }
+                  _updatePauseReminderType(value);
+                },
+              ),
+              const SizedBox(height: 12),
               TextField(
                 controller: _pauseMinutesController,
                 focusNode: _pauseMinutesFocus,

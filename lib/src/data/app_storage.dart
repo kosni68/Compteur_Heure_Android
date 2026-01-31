@@ -6,6 +6,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/app_data.dart';
+import '../models/pause_reminder_type.dart';
 import '../models/day_entry.dart';
 import '../utils/break_utils.dart';
 import '../utils/format_utils.dart';
@@ -56,6 +57,7 @@ class AppStorage {
         trackingDayKey: null,
         pauseStartTime: null,
         pauseReminderMinutes: AppData.defaultPauseReminderMinutes,
+        pauseReminderType: PauseReminderType.notification,
         localeCode: 'fr',
         backgroundId: 'none',
         notifyEnabled: false,

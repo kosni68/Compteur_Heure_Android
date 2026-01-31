@@ -861,6 +861,27 @@ class AppLocalizations {
         'de': 'Hinweis nach einer Pause.',
       });
 
+  String get pauseReminderTypeLabel => _select({
+        'fr': 'Type de rappel',
+        'en': 'Reminder type',
+        'it': 'Tipo di promemoria',
+        'de': 'Erinnerungstyp',
+      });
+
+  String get pauseReminderTypeNotification => _select({
+        'fr': 'Notification',
+        'en': 'Notification',
+        'it': 'Notifica',
+        'de': 'Benachrichtigung',
+      });
+
+  String get pauseReminderTypeAlarm => _select({
+        'fr': 'Alarme',
+        'en': 'Alarm',
+        'it': 'Allarme',
+        'de': 'Alarm',
+      });
+
   String get pauseReminderMinutesLabel => _select({
         'fr': 'Minutes de pause',
         'en': 'Break minutes',
@@ -957,6 +978,20 @@ class AppLocalizations {
         'en': 'Reminder to resume after a break.',
         'it': 'Promemoria per riprendere dopo una pausa.',
         'de': 'Erinnerung zum Fortsetzen nach einer Pause.',
+      });
+
+  String get pauseReminderAlarmChannelName => _select({
+        'fr': 'Rappel de pause (alarme)',
+        'en': 'Break reminder (alarm)',
+        'it': 'Promemoria pausa (allarme)',
+        'de': 'Pausen-Erinnerung (Alarm)',
+      });
+
+  String get pauseReminderAlarmChannelDescription => _select({
+        'fr': 'Alarme pour reprendre apres une pause.',
+        'en': 'Alarm to resume after a break.',
+        'it': 'Allarme per riprendere dopo una pausa.',
+        'de': 'Alarm zum Fortsetzen nach einer Pause.',
       });
 
   String get pointageNotificationTitleIdle => _select({

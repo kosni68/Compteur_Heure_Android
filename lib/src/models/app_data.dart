@@ -2,6 +2,7 @@
 
 import 'break_interval.dart';
 import 'day_entry.dart';
+import 'pause_reminder_type.dart';
 import '../utils/break_utils.dart';
 import '../utils/format_utils.dart';
 import '../utils/theme_utils.dart';
@@ -19,6 +20,7 @@ class AppData {
     required this.trackingDayKey,
     required this.pauseStartTime,
     required this.pauseReminderMinutes,
+    required this.pauseReminderType,
     required this.localeCode,
     required this.backgroundId,
     required this.notifyEnabled,
@@ -40,6 +42,7 @@ class AppData {
   final String? trackingDayKey;
   final TimeOfDay? pauseStartTime;
   final int pauseReminderMinutes;
+  final PauseReminderType pauseReminderType;
   final String localeCode;
   final String backgroundId;
   final bool notifyEnabled;
@@ -57,6 +60,7 @@ class AppData {
       trackingDayKey: null,
       pauseStartTime: null,
       pauseReminderMinutes: defaultPauseReminderMinutes,
+      pauseReminderType: PauseReminderType.notification,
       localeCode: 'fr',
       backgroundId: 'none',
       notifyEnabled: false,
@@ -75,6 +79,7 @@ class AppData {
     Object? trackingDayKey = _unset,
     Object? pauseStartTime = _unset,
     int? pauseReminderMinutes,
+    PauseReminderType? pauseReminderType,
     String? localeCode,
     String? backgroundId,
     bool? notifyEnabled,
@@ -95,6 +100,7 @@ class AppData {
           ? this.pauseStartTime
           : pauseStartTime as TimeOfDay?,
       pauseReminderMinutes: pauseReminderMinutes ?? this.pauseReminderMinutes,
+      pauseReminderType: pauseReminderType ?? this.pauseReminderType,
       localeCode: localeCode ?? this.localeCode,
       backgroundId: backgroundId ?? this.backgroundId,
       notifyEnabled: notifyEnabled ?? this.notifyEnabled,
@@ -151,6 +157,8 @@ class AppData {
     final pauseReminderMinutes = (json['pauseReminderMinutes'] is int)
         ? json['pauseReminderMinutes'] as int
         : defaultPauseReminderMinutes;
+    final pauseReminderType =
+        pauseReminderTypeFromString(json['pauseReminderType'] as String?);
     final notifyEnabled = (json['notifyEnabled'] as bool?) ?? false;
     final notifyMinutesBefore = (json['notifyMinutesBefore'] is int)
         ? json['notifyMinutesBefore'] as int
@@ -168,6 +176,7 @@ class AppData {
       trackingDayKey: trackingDayKey,
       pauseStartTime: pauseStartTime,
       pauseReminderMinutes: pauseReminderMinutes,
+      pauseReminderType: pauseReminderType,
       localeCode: localeCode,
       backgroundId: backgroundId,
       notifyEnabled: notifyEnabled,
@@ -197,6 +206,7 @@ class AppData {
       'pauseStartTime':
           pauseStartTime == null ? null : timeToStorage(pauseStartTime!),
       'pauseReminderMinutes': pauseReminderMinutes,
+      'pauseReminderType': pauseReminderTypeToString(pauseReminderType),
       'localeCode': localeCode,
       'backgroundId': backgroundId,
       'notifyEnabled': notifyEnabled,

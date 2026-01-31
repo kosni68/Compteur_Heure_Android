@@ -13,6 +13,7 @@ import '../localization/app_localizations.dart';
 import '../models/app_data.dart';
 import '../models/break_interval.dart';
 import '../models/day_entry.dart';
+import '../models/pause_reminder_type.dart';
 import '../utils/break_utils.dart';
 import '../utils/date_utils.dart';
 import '../utils/locale_utils.dart';
@@ -31,6 +32,7 @@ class NotificationService {
   static const int _pointageForegroundId = 2001;
   static const String _pointageChannelId = 'pointage_foreground';
   static const String _pauseChannelId = 'pause_reminder';
+  static const String _pauseAlarmChannelId = 'pause_reminder_alarm';
   static const String _actionStartId = 'action_pointage_start';
   static const String _actionEndId = 'action_pointage_end';
   static const String _actionPauseId = 'action_pointage_pause';
@@ -80,6 +82,17 @@ class NotificationService {
       // Ignore permission request failures (e.g. no activity attached).
     }
     _permissionRequested = true;
+  }
+
+  static Future<void> requestFullScreenIntentPermission() async {
+    await init();
+    final androidPlugin = _plugin.resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin>();
+    try {
+      await androidPlugin?.requestFullScreenIntentPermission();
+    } catch (_) {
+      // Ignore permission request failures.
+    }
   }
 
   static Future<void> _ensureTimeZone() async {
@@ -158,6 +171,7 @@ class NotificationService {
     if (update.schedulePauseReminder) {
       await schedulePauseReminder(
         minutes: update.data.pauseReminderMinutes,
+        type: update.data.pauseReminderType,
         l10n: l10n,
       );
     }
@@ -291,6 +305,7 @@ class NotificationService {
 
   static Future<void> schedulePauseReminder({
     required int minutes,
+    required PauseReminderType type,
     required AppLocalizations l10n,
   }) async {
     await init();
@@ -301,12 +316,30 @@ class NotificationService {
     }
     final scheduledTime = DateTime.now().add(Duration(minutes: minutes));
 
+    final useAlarm = type == PauseReminderType.alarm;
+    final channelId = useAlarm ? _pauseAlarmChannelId : _pauseChannelId;
+    final channelName = useAlarm
+        ? l10n.pauseReminderAlarmChannelName
+        : l10n.pauseReminderChannelName;
+    final channelDescription = useAlarm
+        ? l10n.pauseReminderAlarmChannelDescription
+        : l10n.pauseReminderChannelDescription;
+
     final androidDetails = AndroidNotificationDetails(
-      _pauseChannelId,
-      l10n.pauseReminderChannelName,
-      channelDescription: l10n.pauseReminderChannelDescription,
-      importance: Importance.high,
-      priority: Priority.high,
+      channelId,
+      channelName,
+      channelDescription: channelDescription,
+      importance: useAlarm ? Importance.max : Importance.high,
+      priority: useAlarm ? Priority.max : Priority.high,
+      playSound: true,
+      enableVibration: true,
+      fullScreenIntent: useAlarm,
+      category: useAlarm
+          ? AndroidNotificationCategory.alarm
+          : AndroidNotificationCategory.reminder,
+      audioAttributesUsage: useAlarm
+          ? AudioAttributesUsage.alarm
+          : AudioAttributesUsage.notification,
     );
     final details = NotificationDetails(android: androidDetails);
 
