@@ -201,6 +201,15 @@ class _CalendarPageState extends State<CalendarPage> {
       buffer.writeln(
         '$key;${dayTypeToString(entry.type)};${entry.minutes};$start;$end;$breaks',
       );
+      if (entry.breaks.isNotEmpty) {
+        for (final item in entry.breaks) {
+          final pauseMinutes = breakDuration(item).inMinutes;
+          buffer.writeln(
+            '$key;${dayTypeToString(DayType.pause)};$pauseMinutes;'
+            '${timeToStorage(item.start)};${timeToStorage(item.end)};',
+          );
+        }
+      }
     }
 
     final dir = await getApplicationDocumentsDirectory();

@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
@@ -194,6 +195,9 @@ class NotificationService {
     final hasEnded = hasTracking && endTime != null;
     final isActive = hasTracking && isTrackingDay && !hasEnded;
     final isPaused = isActive && pauseStartTime != null;
+    final now = DateTime.now();
+    final estimatedEnd = _estimateEndDateTime(data, now);
+    final pauseEnd = _pauseEndDateTime(data, now);
 
     final bool showEndAction = isActive && !isPaused;
     final mainActionId = showEndAction ? _actionEndId : _actionStartId;
@@ -214,7 +218,7 @@ class NotificationService {
       title = l10n.pointageNotificationTitleEnded;
       body = l10n.pointageNotificationBodyEnded(formatTimeOfDay(endTime));
     } else if (isPaused) {
-      title = l10n.pointageNotificationTitlePaused;
+      title = _formatPauseTimerTitle(pauseEnd, now);
       body = l10n.pointageNotificationBodyPaused(
         formatTimeOfDay(pauseStartTime),
       );
@@ -225,6 +229,10 @@ class NotificationService {
       );
     }
 
+    if (estimatedEnd != null && isActive) {
+      body = '$body ${l10n.notificationBody(formatTime(estimatedEnd))}';
+    }
+
     final actions = <AndroidNotificationAction>[
       AndroidNotificationAction(
         mainActionId,
@@ -233,7 +241,7 @@ class NotificationService {
         showsUserInterface: false,
         cancelNotification: false,
       ),
-      if (isActive)
+      if (isActive && !isPaused)
         AndroidNotificationAction(
           _actionPauseId,
           l10n.pointageActionPause,
@@ -253,15 +261,22 @@ class NotificationService {
       autoCancel: false,
       playSound: false,
       enableVibration: false,
+      subText: isPaused ? l10n.pointageNotificationTitlePaused : null,
       category: AndroidNotificationCategory.transport,
       styleInformation: const MediaStyleInformation(),
       actions: actions,
     );
+    final payload = pauseEnd == null
+        ? ''
+        : jsonEncode(<String, dynamic>{
+            'pauseEndEpochMs': pauseEnd.millisecondsSinceEpoch,
+          });
     await androidPlugin.startForegroundService(
       _pointageForegroundId,
       title,
       body,
       notificationDetails: androidDetails,
+      payload: payload,
       foregroundServiceTypes: {
         AndroidServiceForegroundType.foregroundServiceTypeDataSync,
       },
@@ -540,6 +555,67 @@ class NotificationService {
 
   static DateTime _dateTimeFromTimeOfDay(DateTime base, TimeOfDay time) {
     return DateTime(base.year, base.month, base.day, time.hour, time.minute);
+  }
+
+  static DateTime? _estimateEndDateTime(AppData data, DateTime now) {
+    final startTime = data.startTime;
+    if (startTime == null) {
+      return null;
+    }
+    if (data.targetMinutes <= 0) {
+      return null;
+    }
+    final baseDate =
+        dateFromKey(data.trackingDayKey ?? '') ?? dateOnly(now);
+    final startDate = _dateTimeFromTimeOfDay(baseDate, startTime);
+
+    final breaks = cloneBreaks(data.breaks);
+    if (data.pauseStartTime != null) {
+      breaks.add(
+        BreakInterval(
+          start: data.pauseStartTime!,
+          end: TimeOfDay.fromDateTime(now),
+        ),
+      );
+    }
+
+    final breakIntervals = _normalizeBreaks(baseDate, startDate, breaks);
+    var estimated = startDate.add(Duration(minutes: data.targetMinutes));
+    for (final interval in breakIntervals) {
+      if (interval.start.isBefore(estimated)) {
+        final duration = interval.end.difference(interval.start);
+        estimated = estimated.add(duration);
+      }
+    }
+    return estimated;
+  }
+
+  static DateTime? _pauseEndDateTime(AppData data, DateTime now) {
+    final pauseStart = data.pauseStartTime;
+    if (pauseStart == null) {
+      return null;
+    }
+    if (data.pauseReminderMinutes <= 0) {
+      return null;
+    }
+    final baseDate =
+        dateFromKey(data.trackingDayKey ?? '') ?? dateOnly(now);
+    final pauseStartDate = _dateTimeFromTimeOfDay(baseDate, pauseStart);
+    return pauseStartDate.add(Duration(minutes: data.pauseReminderMinutes));
+  }
+
+  static String _formatPauseTimerTitle(DateTime? pauseEnd, DateTime now) {
+    if (pauseEnd == null) {
+      return '⏳';
+    }
+    final diffMs = now.difference(pauseEnd).inMilliseconds;
+    if (diffMs < 0) {
+      final remaining =
+          ((-diffMs + 59999) / 60000).floor().clamp(0, 99);
+      return '⏳ -${remaining.toString().padLeft(2, '0')}';
+    }
+    final overdue = (diffMs / 60000).floor().clamp(0, 99);
+    return '⏳ +${overdue.toString().padLeft(2, '0')}';
   }
 }
 
