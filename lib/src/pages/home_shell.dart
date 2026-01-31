@@ -29,12 +29,13 @@ class HomeShell extends StatefulWidget {
   State<HomeShell> createState() => _HomeShellState();
 }
 
-class _HomeShellState extends State<HomeShell> {
+class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   HomeSection _section = HomeSection.pointage;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     widget.controller.addListener(_syncNotification);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       unawaited(NotificationService.requestNotificationsPermission());
@@ -51,7 +52,15 @@ class _HomeShellState extends State<HomeShell> {
   @override
   void dispose() {
     widget.controller.removeListener(_syncNotification);
+    WidgetsBinding.instance.removeObserver(this);
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      unawaited(widget.controller.reload());
+    }
   }
 
   void _syncNotification() {

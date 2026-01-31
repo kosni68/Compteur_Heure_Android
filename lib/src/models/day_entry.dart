@@ -7,6 +7,7 @@ import '../utils/time_utils.dart';
 
 enum DayType {
   work,
+  pause,
   conge,
   maladie,
   maladieEnfant,
@@ -18,6 +19,8 @@ DayType dayTypeFromString(String? raw) {
   switch (raw) {
     case 'conge':
       return DayType.conge;
+    case 'pause':
+      return DayType.pause;
     case 'maladie':
       return DayType.maladie;
     case 'maladieEnfant':
@@ -36,6 +39,8 @@ String dayTypeToString(DayType type) {
   switch (type) {
     case DayType.conge:
       return 'conge';
+    case DayType.pause:
+      return 'pause';
     case DayType.maladie:
       return 'maladie';
     case DayType.maladieEnfant:
@@ -54,6 +59,8 @@ String dayTypeLabel(DayType type, AppLocalizations l10n) {
   switch (type) {
     case DayType.conge:
       return l10n.dayTypeConge;
+    case DayType.pause:
+      return l10n.dayTypePause;
     case DayType.maladie:
       return l10n.dayTypeMaladie;
     case DayType.maladieEnfant:
@@ -77,6 +84,8 @@ Color colorForDayType(DayType type, ThemeData theme) {
   switch (type) {
     case DayType.conge:
       return Colors.orange;
+    case DayType.pause:
+      return Colors.amber;
     case DayType.maladie:
       return Colors.redAccent;
     case DayType.maladieEnfant:

@@ -332,7 +332,17 @@ class _CalendarPageState extends State<CalendarPage> {
                   if (entry == null) {
                     return const <DayEntry>[];
                   }
-                  return <DayEntry>[entry];
+                  final events = <DayEntry>[entry];
+                  final pauseMinutes = breakMinutes(entry.breaks);
+                  if (pauseMinutes > 0) {
+                    events.add(
+                      DayEntry(
+                        minutes: pauseMinutes,
+                        type: DayType.pause,
+                      ),
+                    );
+                  }
+                  return events;
                 },
                 enabledDayPredicate: (day) => !_isFuture(day),
                 headerStyle: const HeaderStyle(
@@ -354,17 +364,32 @@ class _CalendarPageState extends State<CalendarPage> {
                     if (events.isEmpty) {
                       return null;
                     }
-                    final entry = events.first;
-                    final color = colorForDayType(entry.type, theme);
+                    final types = <DayType>{};
+                    for (final entry in events) {
+                      types.add(entry.type);
+                    }
+                    final colors =
+                        types.map((type) => colorForDayType(type, theme)).toList();
                     return Align(
                       alignment: Alignment.bottomCenter,
                       child: Container(
-                        width: 6,
-                        height: 6,
                         margin: const EdgeInsets.only(bottom: 4),
-                        decoration: BoxDecoration(
-                          color: color,
-                          shape: BoxShape.circle,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: colors
+                              .map(
+                                (color) => Container(
+                                  width: 6,
+                                  height: 6,
+                                  margin:
+                                      const EdgeInsets.symmetric(horizontal: 2),
+                                  decoration: BoxDecoration(
+                                    color: color,
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                              )
+                              .toList(),
                         ),
                       ),
                     );
@@ -421,7 +446,9 @@ class _CalendarPageState extends State<CalendarPage> {
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
-                children: DayType.values.map((type) {
+                children: DayType.values
+                    .where((type) => type != DayType.pause)
+                    .map((type) {
                   return ChoiceChip(
                     label: Text(dayTypeLabel(type, l10n)),
                     selected: _selectedType == type,

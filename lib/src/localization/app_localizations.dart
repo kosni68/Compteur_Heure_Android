@@ -1022,6 +1022,13 @@ class AppLocalizations {
         'de': 'Arbeit',
       });
 
+  String get dayTypePause => _select({
+        'fr': 'Pause',
+        'en': 'Break',
+        'it': 'Pausa',
+        'de': 'Pause',
+      });
+
   String get dayTypeConge => _select({
         'fr': 'Conge',
         'en': 'Leave',

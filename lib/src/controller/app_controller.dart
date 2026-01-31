@@ -16,4 +16,10 @@ class AppController extends ChangeNotifier {
     notifyListeners();
     await _storage.save(_data);
   }
+
+  Future<void> reload() async {
+    final latest = await _storage.load();
+    _data = latest;
+    notifyListeners();
+  }
 }

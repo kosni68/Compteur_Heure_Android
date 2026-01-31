@@ -225,6 +225,24 @@ class NotificationService {
       );
     }
 
+    final actions = <AndroidNotificationAction>[
+      AndroidNotificationAction(
+        mainActionId,
+        mainActionLabel,
+        icon: mainActionIcon,
+        showsUserInterface: false,
+        cancelNotification: false,
+      ),
+      if (isActive)
+        AndroidNotificationAction(
+          _actionPauseId,
+          l10n.pointageActionPause,
+          icon: pauseActionIcon,
+          showsUserInterface: false,
+          cancelNotification: false,
+        ),
+    ];
+
     final androidDetails = AndroidNotificationDetails(
       _pointageChannelId,
       l10n.pointageNotificationChannelName,
@@ -237,39 +255,17 @@ class NotificationService {
       enableVibration: false,
       category: AndroidNotificationCategory.transport,
       styleInformation: const MediaStyleInformation(),
-      actions: <AndroidNotificationAction>[
-        AndroidNotificationAction(
-          mainActionId,
-          mainActionLabel,
-          icon: mainActionIcon,
-          showsUserInterface: false,
-          cancelNotification: false,
-        ),
-        AndroidNotificationAction(
-          _actionPauseId,
-          l10n.pointageActionPause,
-          icon: pauseActionIcon,
-          showsUserInterface: false,
-          cancelNotification: false,
-        ),
-      ],
+      actions: actions,
     );
-    final details = NotificationDetails(android: androidDetails);
-
-    if (isActive) {
-      await androidPlugin.startForegroundService(
-        _pointageForegroundId,
-        title,
-        body,
-        notificationDetails: androidDetails,
-        foregroundServiceTypes: {
-          AndroidServiceForegroundType.foregroundServiceTypeDataSync,
-        },
-      );
-    } else {
-      await androidPlugin.stopForegroundService();
-      await _plugin.show(_pointageForegroundId, title, body, details);
-    }
+    await androidPlugin.startForegroundService(
+      _pointageForegroundId,
+      title,
+      body,
+      notificationDetails: androidDetails,
+      foregroundServiceTypes: {
+        AndroidServiceForegroundType.foregroundServiceTypeDataSync,
+      },
+    );
   }
 
   static Future<void> updatePointageNotificationFromData(
