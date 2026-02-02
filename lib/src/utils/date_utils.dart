@@ -41,6 +41,7 @@ int sumEntriesInRange(
   DateTime start,
   DateTime end, {
   DayType? typeFilter,
+  Set<DayType>? typeFilters,
 }) {
   final rangeStart = dateOnly(start);
   final rangeEnd = dateOnly(end);
@@ -54,6 +55,9 @@ int sumEntriesInRange(
       if (typeFilter != null && entry.value.type != typeFilter) {
         continue;
       }
+      if (typeFilters != null && !typeFilters.contains(entry.value.type)) {
+        continue;
+      }
       total += entry.value.minutes;
     }
   }
@@ -65,6 +69,7 @@ int countEntriesInRange(
   DateTime start,
   DateTime end, {
   DayType? typeFilter,
+  Set<DayType>? typeFilters,
 }) {
   final rangeStart = dateOnly(start);
   final rangeEnd = dateOnly(end);
@@ -76,6 +81,9 @@ int countEntriesInRange(
     }
     if (!date.isBefore(rangeStart) && !date.isAfter(rangeEnd)) {
       if (typeFilter != null && entry.value.type != typeFilter) {
+        continue;
+      }
+      if (typeFilters != null && !typeFilters.contains(entry.value.type)) {
         continue;
       }
       count++;

@@ -299,9 +299,12 @@ class _PointagePageState extends State<PointagePage>
     final key = dateKey(dateOnly(startDate));
     final data = widget.controller.data;
     final existing = data.entries[key];
+    final nextType = existing?.type == DayType.teletravail
+        ? DayType.teletravail
+        : DayType.work;
     if (existing != null &&
         existing.minutes == minutes &&
-        existing.type == DayType.work) {
+        existing.type == nextType) {
       return;
     }
 
@@ -309,7 +312,7 @@ class _PointagePageState extends State<PointagePage>
     final updatedEntries = Map<String, DayEntry>.from(data.entries);
     updatedEntries[key] = DayEntry(
       minutes: minutes,
-      type: DayType.work,
+      type: nextType,
       startTime: _startTime,
       endTime: _endTime,
       breaks: cloneBreaks(_breaks),
@@ -632,10 +635,13 @@ class _PointagePageState extends State<PointagePage>
     final balanceMinutes =
         worked == null ? null : worked.inMinutes - targetMinutes;
     final key = dateKey(dateOnly(DateTime.now()));
+    final savedEntry = widget.controller.data.entries[key];
     final saved = worked == null
         ? false
-        : (widget.controller.data.entries[key]?.minutes == worked.inMinutes &&
-            widget.controller.data.entries[key]?.type == DayType.work);
+        : (savedEntry != null &&
+            savedEntry.minutes == worked.inMinutes &&
+            (savedEntry.type == DayType.work ||
+                savedEntry.type == DayType.teletravail));
 
     final hasPointage =
         end != null && worked != null && presence != null && breaks != null;

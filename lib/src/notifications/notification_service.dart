@@ -504,9 +504,13 @@ class NotificationService {
         breaks,
       );
       if (workedMinutes != null) {
+        final existing = entries[trackingDayKey];
+        final nextType = existing?.type == DayType.teletravail
+            ? DayType.teletravail
+            : DayType.work;
         entries[trackingDayKey] = DayEntry(
           minutes: workedMinutes,
-          type: DayType.work,
+          type: nextType,
           startTime: startTime,
           endTime: endTime,
           breaks: cloneBreaks(breaks),

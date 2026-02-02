@@ -10,6 +10,8 @@ import '../widgets/info_row.dart';
 import '../widgets/section_card.dart';
 import '../widgets/stats_charts.dart';
 
+const _workDayTypes = {DayType.work, DayType.teletravail};
+
 class StatsPage extends StatelessWidget {
   const StatsPage({super.key, required this.controller});
 
@@ -64,7 +66,7 @@ class StatsPage extends StatelessWidget {
           entries,
           weekStart,
           weekEnd,
-          typeFilter: DayType.work,
+          typeFilters: _workDayTypes,
         ) +
         sumEntriesInRange(
           entries,
@@ -76,7 +78,7 @@ class StatsPage extends StatelessWidget {
           entries,
           monthStart,
           monthEnd,
-          typeFilter: DayType.work,
+          typeFilters: _workDayTypes,
         ) +
         sumEntriesInRange(
           entries,
@@ -88,7 +90,7 @@ class StatsPage extends StatelessWidget {
           entries,
           last7Start,
           today,
-          typeFilter: DayType.work,
+          typeFilters: _workDayTypes,
         ) +
         sumEntriesInRange(
           entries,
@@ -593,7 +595,7 @@ List<_WeekBucket> _weeklyBuckets(
           entries,
           weekStart,
           weekEnd,
-          typeFilter: DayType.work,
+          typeFilters: _workDayTypes,
         ) +
         sumEntriesInRange(
           entries,
@@ -631,7 +633,7 @@ _CumulativeSeries _monthlyCumulative(
     if (entry != null && isWorkDayType(entry.type)) {
       cumulative += entry.minutes;
     }
-    if (entry != null && entry.type == DayType.work) {
+    if (entry != null && isTargetDayType(entry.type)) {
       targetCumulative += targetMinutes;
     }
     values.add(cumulative);
@@ -657,7 +659,7 @@ List<int> _balanceCumulative(
     if (entry != null && isWorkDayType(entry.type)) {
       cumulative += entry.minutes;
     }
-    if (entry != null && entry.type == DayType.work) {
+    if (entry != null && isTargetDayType(entry.type)) {
       targetCumulative += targetMinutes;
     }
     values.add(cumulative - targetCumulative);
@@ -704,6 +706,7 @@ List<DonutSegment> _donutSegments(
 ) {
   const order = [
     DayType.work,
+    DayType.teletravail,
     DayType.recup,
     DayType.pause,
     DayType.conge,

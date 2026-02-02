@@ -1225,6 +1225,13 @@ class AppLocalizations {
         'de': 'Arbeit',
       });
 
+  String get dayTypeTeletravail => _select({
+        'fr': 'Teletravail',
+        'en': 'Remote',
+        'it': 'Telelavoro',
+        'de': 'Homeoffice',
+      });
+
   String get dayTypePause => _select({
         'fr': 'Pause',
         'en': 'Break',

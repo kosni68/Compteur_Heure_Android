@@ -235,6 +235,7 @@ class _CalendarPageState extends State<CalendarPage> {
     final localeCode = data.localeCode;
     final l10n = context.l10n;
     final isFuture = _isFuture(_selectedDay);
+    const workDayTypes = {DayType.work, DayType.teletravail};
 
     final periodRange = _format == CalendarFormat.week
         ? _weekRange(_focusedDay)
@@ -243,7 +244,7 @@ class _CalendarPageState extends State<CalendarPage> {
       entries,
       periodRange.start,
       periodRange.end,
-      typeFilter: DayType.work,
+      typeFilters: workDayTypes,
     );
     final periodRecupMinutes = sumEntriesInRange(
       entries,
@@ -256,7 +257,7 @@ class _CalendarPageState extends State<CalendarPage> {
       entries,
       periodRange.start,
       periodRange.end,
-      typeFilter: DayType.work,
+      typeFilters: workDayTypes,
     );
     final periodRecupDays = countEntriesInRange(
       entries,
